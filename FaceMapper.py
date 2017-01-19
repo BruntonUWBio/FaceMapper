@@ -38,12 +38,13 @@
 
 
 
+import csv
 import os
 import os.path
 import random
 
 import wx
-from wx.lib.floatcanvas import NavCanvas
+from wx.lib.floatcanvas import NavCanvas, FloatCanvas
 
 IMAGE_FORMATS = [".JPG", ".PNG", ".PPM", ".PGM", ".GIF", ".TIF", ".TIFF", ]
 
@@ -80,6 +81,7 @@ class FaceMapperFrame(wx.Frame):
         self.faceLabels.append("Right Eye: {0} out of {1}".format(self.rightEyeNum, self.rightEyeMax))
         self.faceLabels.append("Mouth: {0} out of {1}".format(self.mouthNum, self.mouthMax))
         self.faceNums = {"LE": self.leftEyeMax, "ME": self.mouthMax, "RE": self.rightEyeMax}
+        self.first_click = True
 
         # ------------- Other Components ----------------
         self.CreateStatusBar()
@@ -131,6 +133,60 @@ class FaceMapperFrame(wx.Frame):
 
         # -------------- Event Handling ----------------
         wx.EVT_LISTBOX(self, self.list.GetId(), self.onSelect)
+        self.EventsAreBound = False
+        self.BindAllMouseEvents()
+        wx.EVT_MENU(self, wx.ID_OPEN, self.onOpen)
+        wx.EVT_MENU(self, wx.ID_SAVE, self.onSave)
+        wx.EVT_MENU(self, wx.ID_SAVEAS, self.onSaveAs)
+
+    def BindAllMouseEvents(self):
+        if not self.EventsAreBound:
+            ## Here is how you catch FloatCanvas mouse events
+            self.Canvas.Bind(FloatCanvas.EVT_LEFT_DOWN, self.OnLeftDown)
+
+        self.EventsAreBound = True
+
+    def openCSVFile(self, path):
+
+        reader = csv.reader(open(path, "rb"))
+        first = True
+        eyes = False
+        coords = {}
+        for row in reader:
+            filename = row[0]
+            row = row[1:]
+
+            if len(row) % 2 != 0:
+                print "Error Loading File"
+                raise TypeError("Odd number of values in this row")
+
+            points = []
+            for i in range(0, len(row), 2):
+                point = (float(row[i]), float(row[i + 1]))
+                points.append(point)
+
+            coords[filename] = points
+        print "CSV File Data: ", coords
+        self.coords = coords
+
+    def save(self, path):
+        ''' Save the coords to a csv file. '''
+        writer = csv.writer(open(path, 'wb'))
+
+        firstRow = [' ']
+        for facePart in sorted(self.faceNums.keys()):
+            for j in range(1, self.faceNums[facePart] + 1):
+                firstRow.append(facePart + str(j))
+                firstRow.append('')
+        writer.writerow(firstRow)
+        keys = self.coords.keys()
+        keys.sort()
+        for key in keys:
+            row = [key]
+            for point in self.coords[key]:
+                row.append(point[0])
+                row.append(point[1])
+            writer.writerow(row)
 
     def onSelect(self, event):
         if self.image_name:
@@ -158,6 +214,85 @@ class FaceMapperFrame(wx.Frame):
             im = self.current_image.Copy()
             self.Canvas.AddScaledBitmap(im.ConvertToBitmap(), (0, 0), Height=50, Position="tl")
         self.Canvas.ZoomToBB()
+
+    def OnLeftDown(self, event):
+        self.AddCoords(event)
+
+    def AddCoords(self, event):
+
+        if self.first_click:
+            self.coords[self.image_name] = []
+            self.first_click = False
+
+        if len(self.coords[self.image_name]) < self.n_points or self.n_points == None:
+            self.coords[self.image_name].append(event.Coords)
+            self.moving = len(self.coords[self.image_name]) - 1
+            C = self.Canvas.AddCircle(event.Coords, 1, LineWidth=1, LineColor='RED', FillColor='CLEAR')
+            C.Bind(FloatCanvas.EVT_FC_LEFT_DOWN, self.move)
+            self.Canvas.Draw()
+            i = 1
+            self.leftEyeNum = 0
+            self.mouthNum = 0
+            self.rightEyeNum = 0
+            for point in self.coords[self.image_name]:
+                if i <= self.leftEyeMax:
+                    self.faceNum = 'LE' + str(i)
+                    self.leftEyeNum += 1
+                elif i <= self.mouthMax + self.leftEyeMax:
+                    self.faceNum = 'M' + str(i - self.leftEyeMax)
+                    self.mouthNum += 1
+                else:
+                    self.faceNum = 'RE' + str(i - self.leftEyeMax - self.mouthMax)
+                    self.rightEyeNum += 1
+                # w, h = bmdc.GetTextExtent(self.faceNum)
+                # bmdc.DrawText(self.faceNum, self.scale * point[0] - w / 2, self.scale * point[1] + 5)
+                i += 1
+            # del bmdc
+
+            self.counterList.Clear()
+            self.counterList.Append("Left Eye: {0} out of {1}".format(self.leftEyeNum, self.leftEyeMax))
+            self.counterList.Append("Right Eye: {0} out of {1}".format(self.rightEyeNum, self.rightEyeMax))
+            self.counterList.Append("Mouth: {0} out of {1}".format(self.mouthNum, self.mouthMax))
+
+    def move(self, object):
+        self.MovingObject = object
+
+    def onOpen(self, event):
+        print "Open"
+        fd = wx.FileDialog(self, style=wx.FD_OPEN)
+        fd.ShowModal()
+        self.filename = fd.GetPath()
+        print "On Open...", self.filename
+
+        self.openCSVFile(self.filename)
+
+    def onSave(self, event):
+        if self.filename == None:
+            # In this case perform a "Save As"
+            self.onSaveAs(event)
+        else:
+            self.save(self.filename)
+
+    def onSaveAs(self, event):
+        fd = wx.FileDialog(self, message="Save the coordinates as...", style=wx.FD_SAVE,
+                           wildcard="Comma separated value (*.csv)|*.csv")
+        fd.ShowModal()
+        self.filename = fd.GetPath()
+
+        self.save(self.filename)
+
+    def onClose(self, event):
+        dlg = wx.MessageDialog(self, message="Would you like to save the coordinates before exiting?",
+                               style=wx.YES_NO | wx.YES_DEFAULT)
+        result = dlg.ShowModal()
+        if result == wx.ID_YES:
+            print "Saving..."
+            self.onSave(event)
+        else:
+            print "Discarding changes..."
+
+        # Pass this on to the default handler.
+        event.Skip()
 
 
 if __name__ == '__main__':
