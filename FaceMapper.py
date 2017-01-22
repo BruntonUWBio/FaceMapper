@@ -67,8 +67,10 @@ class FaceMapperFrame(wx.Frame):
                     self.image_names.append(name)
         if randomize:
             random.shuffle(self.image_names)
+        self.image_names.sort()
         self.filename = None
         self.coords = {}
+        self.circles = {}
 
         self.leftEyeMax = 10
         self.rightEyeMax = 10
@@ -107,8 +109,8 @@ class FaceMapperFrame(wx.Frame):
         self.SetMenuBar(menuBar)  # Adding the MenuBar to the Frame content.
 
         # ----------------- Image List ------------------
-        self.list = wx.ListBox(self, wx.NewId(), style=wx.LC_REPORT | wx.SUNKEN_BORDER | wx.LB_SORT,
-                               choices=self.image_names)
+        self.list = wx.ListBox(self, wx.NewId(), style=wx.LC_REPORT | wx.SUNKEN_BORDER,
+                               choices=sorted(self.image_names))
         self.list.Show(True)
 
         # ----------------- Image Display ---------------
@@ -116,16 +118,21 @@ class FaceMapperFrame(wx.Frame):
         self.Canvas = NC.Canvas
         self.Canvas.MinScale = 14
         self.Canvas.MaxScale = 500
+        self.imHeight = 50
 
         # ----------------- Counter Display ------------
+        self.counterBox = wx.BoxSizer(wx.VERTICAL)
         self.counterList = wx.ListBox(self, wx.NewId(), style=wx.LC_REPORT | wx.SUNKEN_BORDER | wx.LB_SORT,
                                       choices=self.faceLabels)
+        self.saveButton = wx.Button(self, wx.NewId(), label='Press to Save and Continue')
+        self.counterBox.Add(self.counterList, 1, wx.EXPAND)
+        self.counterBox.Add(self.saveButton, 1, wx.EXPAND)
 
         # ----------------- Window Layout  -------------
         self.box = wx.BoxSizer(wx.HORIZONTAL)
         self.box.Add(self.list, 1, wx.EXPAND)
         self.box.Add(NC, 3, wx.EXPAND)
-        self.box.Add(self.counterList, 1, wx.EXPAND)
+        self.box.Add(self.counterBox, 1, wx.EXPAND)
 
         self.SetAutoLayout(True)
         self.SetSizer(self.box)
@@ -133,6 +140,7 @@ class FaceMapperFrame(wx.Frame):
 
         # -------------- Event Handling ----------------
         wx.EVT_LISTBOX(self, self.list.GetId(), self.onSelect)
+        wx.EVT_BUTTON(self, self.saveButton.GetId(), self.onButtonSave)
         self.EventsAreBound = False
         self.BindAllMouseEvents()
         wx.EVT_MENU(self, wx.ID_OPEN, self.onOpen)
@@ -169,6 +177,41 @@ class FaceMapperFrame(wx.Frame):
         print "CSV File Data: ", coords
         self.coords = coords
 
+    def onButtonSave(self, event):
+        i = self.image_names.index(self.image_name)
+        self.image_names.remove(self.image_name)
+        self.list.Set(self.image_names)
+        self.list.Update()
+        if len(self.image_names) > 1:
+            if self.image_name:
+                self.prev_image_name = self.image_name
+                if self.n_points != None and len(self.coords[self.image_name]) != self.n_points:
+                    print "ERROR: incorrect number of points."
+
+            self.image_name = self.image_names[i]
+
+            if not self.coords.has_key(self.image_name):
+                if self.prev_image_name:
+                    self.coords[self.image_name] = self.coords[self.prev_image_name]
+                    self.circles[self.image_name] = self.circles[self.prev_image_name]
+                else:
+                    self.coords[self.image_name] = []
+                    self.circles[self.image_name] = []
+            filename = os.path.join(self.image_dir, self.image_name)
+            self.current_image = wx.Image(filename)
+
+            if not self.prev_image_name:
+                self.first_click = True
+            self.DisplayImage(Zoom=True)
+            print(self.coords)
+            self.onSave(event)
+        else:
+
+            print('You\'re Done!')
+
+
+
+
     def save(self, path):
         ''' Save the coords to a csv file. '''
         writer = csv.writer(open(path, 'wb'))
@@ -199,63 +242,70 @@ class FaceMapperFrame(wx.Frame):
         if not self.coords.has_key(self.image_name):
             if self.prev_image_name:
                 self.coords[self.image_name] = self.coords[self.prev_image_name]
+                self.circles[self.image_name] = self.circles[self.prev_image_name]
             else:
                 self.coords[self.image_name] = []
+                self.circles[self.image_name] = []
         filename = os.path.join(self.image_dir, self.image_name)
         self.current_image = wx.Image(filename)
 
         if not self.prev_image_name:
             self.first_click = True
-        self.DisplayImage()
+        self.DisplayImage(Zoom=True)
 
-    def DisplayImage(self):
-        self.Canvas.InitAll()
-        if self.current_image:
-            im = self.current_image.Copy()
-            self.Canvas.AddScaledBitmap(im.ConvertToBitmap(), (0, 0), Height=50, Position="tl")
-        self.Canvas.ZoomToBB()
+    def DisplayImage(self, Zoom):
+        if Zoom:
+            self.Canvas.InitAll()
+            if self.current_image:
+                im = self.current_image.Copy()
+                self.Canvas.AddScaledBitmap(im.ConvertToBitmap(), (0, 0), Height=self.imHeight, Position="tl")
+                self.Canvas.ZoomToBB()
+        self.Canvas._ForeDrawList = []
+        i = 1
+        self.leftEyeNum = 0
+        self.mouthNum = 0
+        self.rightEyeNum = 0
+        for circle in self.coords[self.image_name]:
+            if i <= self.leftEyeMax:
+                self.faceNum = 'LE' + str(i)
+                self.leftEyeNum += 1
+            elif i <= self.mouthMax + self.leftEyeMax:
+                self.faceNum = 'M' + str(i - self.leftEyeMax)
+                self.mouthNum += 1
+            else:
+                self.faceNum = 'RE' + str(i - self.leftEyeMax - self.mouthMax)
+                self.rightEyeNum += 1
+            i += 1
+            C = self.Canvas.AddCircle(circle, self.imHeight / 50, LineWidth=1, LineColor='RED',
+                                      FillStyle='TRANSPARENT', InForeground=True)
+            C.Bind(FloatCanvas.EVT_FC_LEFT_DOWN, self.move)
+            self.circles[self.image_name].append(C)
+        self.counterList.Clear()
+        self.counterList.Append("Left Eye: {0} out of {1}".format(self.leftEyeNum, self.leftEyeMax))
+        self.counterList.Append("Right Eye: {0} out of {1}".format(self.rightEyeNum, self.rightEyeMax))
+        self.counterList.Append("Mouth: {0} out of {1}".format(self.mouthNum, self.mouthMax))
+        self.Canvas.Draw()
 
     def OnLeftDown(self, event):
-        self.AddCoords(event)
+        self.AddCoords(event, isMoving=False)
 
-    def AddCoords(self, event):
-
-        if self.first_click:
-            self.coords[self.image_name] = []
-            self.first_click = False
-
+    def AddCoords(self, event, isMoving):
         if len(self.coords[self.image_name]) < self.n_points or self.n_points == None:
-            self.coords[self.image_name].append(event.Coords)
             self.moving = len(self.coords[self.image_name]) - 1
-            C = self.Canvas.AddCircle(event.Coords, 1, LineWidth=1, LineColor='RED', FillColor='CLEAR')
-            C.Bind(FloatCanvas.EVT_FC_LEFT_DOWN, self.move)
-            self.Canvas.Draw()
-            i = 1
-            self.leftEyeNum = 0
-            self.mouthNum = 0
-            self.rightEyeNum = 0
-            for point in self.coords[self.image_name]:
-                if i <= self.leftEyeMax:
-                    self.faceNum = 'LE' + str(i)
-                    self.leftEyeNum += 1
-                elif i <= self.mouthMax + self.leftEyeMax:
-                    self.faceNum = 'M' + str(i - self.leftEyeMax)
-                    self.mouthNum += 1
-                else:
-                    self.faceNum = 'RE' + str(i - self.leftEyeMax - self.mouthMax)
-                    self.rightEyeNum += 1
-                # w, h = bmdc.GetTextExtent(self.faceNum)
-                # bmdc.DrawText(self.faceNum, self.scale * point[0] - w / 2, self.scale * point[1] + 5)
-                i += 1
-            # del bmdc
+            if not isMoving:
+                self.coords[self.image_name].append(event.Coords)
+            else:
+                self.coords[self.image_name][self.moving] = event.Coords
+        self.DisplayImage(Zoom=False)
 
-            self.counterList.Clear()
-            self.counterList.Append("Left Eye: {0} out of {1}".format(self.leftEyeNum, self.leftEyeMax))
-            self.counterList.Append("Right Eye: {0} out of {1}".format(self.rightEyeNum, self.rightEyeMax))
-            self.counterList.Append("Mouth: {0} out of {1}".format(self.mouthNum, self.mouthMax))
 
     def move(self, object):
         self.MovingObject = object
+        self.Canvas.Bind(FloatCanvas.EVT_LEFT_UP, self.movingRelease)
+        self.Canvas.RemoveObject(self.MovingObject)
+
+    def movingRelease(self, event):
+        self.AddCoords(event, isMoving=True)
 
     def onOpen(self, event):
         print "Open"

@@ -1,7 +1,7 @@
 <?xml version="1.0" encoding="UTF-8"?>
 <project version="4">
   <component name="ChangeListManager">
-    <list default="true" id="07ea8d64-bb1e-4b01-b08d-f4dd20cf0c67" name="Default" comment="Initial commit">
+    <list default="true" id="07ea8d64-bb1e-4b01-b08d-f4dd20cf0c67" name="Default" comment="Fixed zoom for placing dots, added original CSV functionality">
       <change type="MODIFICATION" beforePath="$PROJECT_DIR$/.idea/workspace.xml" afterPath="$PROJECT_DIR$/.idea/workspace.xml" />
       <change type="MODIFICATION" beforePath="$PROJECT_DIR$/FaceMapper.py" afterPath="$PROJECT_DIR$/FaceMapper.py" />
     </list>
@@ -21,10 +21,10 @@
       <file leaf-file-name="FaceMapper.py" pinned="false" current-in-tab="true">
         <entry file="file://$PROJECT_DIR$/FaceMapper.py">
           <provider selected="true" editor-type-id="text-editor">
-            <state relative-caret-position="51">
-              <caret line="27" column="69" lean-forward="true" selection-start-line="27" selection-start-column="69" selection-end-line="27" selection-end-column="69" />
+            <state relative-caret-position="479">
+              <caret line="193" column="40" lean-forward="true" selection-start-line="193" selection-start-column="40" selection-end-line="193" selection-end-column="40" />
               <folding>
-                <element signature="e#1727#1736#0" expanded="true" />
+                <element signature="e#1727#1737#0" expanded="true" />
               </folding>
             </state>
           </provider>
@@ -45,6 +45,11 @@
       <find>coords</find>
       <find>zoomtobb</find>
       <find>onselect</find>
+      <find>self.coords[self.image_name]</find>
+      <find>list</find>
+      <find>onsave</find>
+      <find>self.save</find>
+      <find>save</find>
     </findStrings>
   </component>
   <component name="Git.Settings">
@@ -266,7 +271,14 @@
       <option name="project" value="LOCAL" />
       <updated>1484726525850</updated>
     </task>
-    <option name="localTasksCounter" value="2" />
+    <task id="LOCAL-00002" summary="Fixed zoom for placing dots, added original CSV functionality">
+      <created>1484802466424</created>
+      <option name="number" value="00002" />
+      <option name="presentableId" value="LOCAL-00002" />
+      <option name="project" value="LOCAL" />
+      <updated>1484802466424</updated>
+    </task>
+    <option name="localTasksCounter" value="3" />
     <servers />
   </component>
   <component name="ToolWindowManager">
@@ -278,7 +290,7 @@
       <window_info id="Event Log" active="false" anchor="bottom" auto_hide="false" internal_type="DOCKED" type="DOCKED" visible="false" show_stripe_button="true" weight="0.33" sideWeight="0.5" order="7" side_tool="true" content_ui="tabs" />
       <window_info id="Version Control" active="false" anchor="bottom" auto_hide="false" internal_type="DOCKED" type="DOCKED" visible="false" show_stripe_button="true" weight="0.33" sideWeight="0.5" order="7" side_tool="false" content_ui="tabs" />
       <window_info id="Python Console" active="false" anchor="bottom" auto_hide="false" internal_type="DOCKED" type="DOCKED" visible="false" show_stripe_button="true" weight="0.33" sideWeight="0.5" order="7" side_tool="false" content_ui="tabs" />
-      <window_info id="Run" active="false" anchor="bottom" auto_hide="false" internal_type="DOCKED" type="DOCKED" visible="false" show_stripe_button="true" weight="0.32845187" sideWeight="0.5" order="2" side_tool="false" content_ui="tabs" />
+      <window_info id="Run" active="false" anchor="bottom" auto_hide="false" internal_type="DOCKED" type="DOCKED" visible="false" show_stripe_button="true" weight="0.32740587" sideWeight="0.5" order="2" side_tool="false" content_ui="tabs" />
       <window_info id="Structure" active="false" anchor="left" auto_hide="false" internal_type="DOCKED" type="DOCKED" visible="false" show_stripe_button="true" weight="0.25" sideWeight="0.5" order="1" side_tool="false" content_ui="tabs" />
       <window_info id="Terminal" active="false" anchor="bottom" auto_hide="false" internal_type="DOCKED" type="DOCKED" visible="false" show_stripe_button="true" weight="0.33" sideWeight="0.5" order="7" side_tool="false" content_ui="tabs" />
       <window_info id="Favorites" active="false" anchor="left" auto_hide="false" internal_type="DOCKED" type="DOCKED" visible="false" show_stripe_button="true" weight="0.33" sideWeight="0.5" order="2" side_tool="true" content_ui="tabs" />
@@ -299,13 +311,16 @@
     <option name="CHECK_CODE_SMELLS_BEFORE_PROJECT_COMMIT" value="true" />
     <option name="CHECK_CODE_CLEANUP_BEFORE_PROJECT_COMMIT" value="true" />
     <MESSAGE value="Initial commit" />
-    <option name="LAST_COMMIT_MESSAGE" value="Initial commit" />
+    <MESSAGE value="Fixed zoom for placing dots, added original CSV functionality" />
+    <option name="LAST_COMMIT_MESSAGE" value="Fixed zoom for placing dots, added original CSV functionality" />
     <option name="OPTIMIZE_IMPORTS_BEFORE_PROJECT_COMMIT" value="true" />
     <option name="REFORMAT_BEFORE_PROJECT_COMMIT" value="true" />
     <option name="REARRANGE_BEFORE_PROJECT_COMMIT" value="true" />
   </component>
   <component name="XDebuggerManager">
-    <breakpoint-manager />
+    <breakpoint-manager>
+      <option name="time" value="2" />
+    </breakpoint-manager>
     <watches-manager />
   </component>
   <component name="editorHistoryManager">
@@ -314,7 +329,7 @@
         <state relative-caret-position="0">
           <caret line="0" column="0" lean-forward="false" selection-start-line="0" selection-start-column="0" selection-end-line="0" selection-end-column="0" />
           <folding>
-            <element signature="e#1727#1736#0" expanded="true" />
+            <element signature="e#1727#1737#0" expanded="true" />
           </folding>
         </state>
       </provider>
@@ -324,7 +339,7 @@
         <state relative-caret-position="0">
           <caret line="0" column="0" lean-forward="false" selection-start-line="0" selection-start-column="0" selection-end-line="0" selection-end-column="0" />
           <folding>
-            <element signature="e#1727#1736#0" expanded="true" />
+            <element signature="e#1727#1737#0" expanded="true" />
           </folding>
         </state>
       </provider>
@@ -334,7 +349,7 @@
         <state relative-caret-position="0">
           <caret line="0" column="0" lean-forward="false" selection-start-line="0" selection-start-column="0" selection-end-line="0" selection-end-column="0" />
           <folding>
-            <element signature="e#1727#1736#0" expanded="true" />
+            <element signature="e#1727#1737#0" expanded="true" />
           </folding>
         </state>
       </provider>
@@ -344,17 +359,37 @@
         <state relative-caret-position="0">
           <caret line="0" column="0" lean-forward="false" selection-start-line="0" selection-start-column="0" selection-end-line="0" selection-end-column="0" />
           <folding>
-            <element signature="e#1727#1736#0" expanded="true" />
+            <element signature="e#1727#1737#0" expanded="true" />
           </folding>
         </state>
       </provider>
     </entry>
     <entry file="file://$PROJECT_DIR$/FaceMapper.py">
       <provider selected="true" editor-type-id="text-editor">
-        <state relative-caret-position="51">
-          <caret line="27" column="69" lean-forward="true" selection-start-line="27" selection-start-column="69" selection-end-line="27" selection-end-column="69" />
+        <state relative-caret-position="0">
+          <caret line="0" column="0" lean-forward="false" selection-start-line="0" selection-start-column="0" selection-end-line="0" selection-end-column="0" />
           <folding>
-            <element signature="e#1727#1736#0" expanded="true" />
+            <element signature="e#1727#1737#0" expanded="true" />
+          </folding>
+        </state>
+      </provider>
+    </entry>
+    <entry file="file://$PROJECT_DIR$/FaceMapper.py">
+      <provider selected="true" editor-type-id="text-editor">
+        <state relative-caret-position="0">
+          <caret line="0" column="0" lean-forward="false" selection-start-line="0" selection-start-column="0" selection-end-line="0" selection-end-column="0" />
+          <folding>
+            <element signature="e#1727#1737#0" expanded="true" />
+          </folding>
+        </state>
+      </provider>
+    </entry>
+    <entry file="file://$PROJECT_DIR$/FaceMapper.py">
+      <provider selected="true" editor-type-id="text-editor">
+        <state relative-caret-position="479">
+          <caret line="193" column="40" lean-forward="true" selection-start-line="193" selection-start-column="40" selection-end-line="193" selection-end-column="40" />
+          <folding>
+            <element signature="e#1727#1737#0" expanded="true" />
           </folding>
         </state>
       </provider>
