@@ -38,10 +38,12 @@
 
 
 
+import copy
 import csv
 import os
 import os.path
 import random
+from collections import defaultdict
 
 import wx
 from wx.lib.floatcanvas import NavCanvas, FloatCanvas
@@ -69,7 +71,7 @@ class FaceMapperFrame(wx.Frame):
             random.shuffle(self.image_names)
         self.image_names.sort()
         self.filename = None
-        self.coords = {}
+        self.coords = defaultdict()
         self.circles = {}
 
         self.leftEyeMax = 10
@@ -189,27 +191,27 @@ class FaceMapperFrame(wx.Frame):
                     print "ERROR: incorrect number of points."
 
             self.image_name = self.image_names[i]
-
-            if not self.coords.has_key(self.image_name):
-                if self.prev_image_name:
-                    self.coords[self.image_name] = self.coords[self.prev_image_name]
-                    self.circles[self.image_name] = self.circles[self.prev_image_name]
-                else:
-                    self.coords[self.image_name] = []
-                    self.circles[self.image_name] = []
-            filename = os.path.join(self.image_dir, self.image_name)
-            self.current_image = wx.Image(filename)
-
-            if not self.prev_image_name:
-                self.first_click = True
-            self.DisplayImage(Zoom=True)
-            print(self.coords)
-            self.onSave(event)
+            self.mirrorImage(event, shouldSave=True)
         else:
-
             print('You\'re Done!')
 
+    def mirrorImage(self, event, shouldSave):
+        if not self.coords.has_key(self.image_name):
+            if self.prev_image_name:
+                self.coords[self.image_name] = copy.copy(self.coords[self.prev_image_name])
+                self.circles[self.image_name] = self.circles[self.prev_image_name]
+            else:
+                self.coords[self.image_name] = []
+                self.circles[self.image_name] = []
+        filename = os.path.join(self.image_dir, self.image_name)
+        self.current_image = wx.Image(filename)
 
+        if not self.prev_image_name:
+            self.first_click = True
+        self.DisplayImage(Zoom=True)
+        print(self.coords)
+        if shouldSave:
+            self.onSave(event)
 
 
     def save(self, path):
@@ -238,20 +240,7 @@ class FaceMapperFrame(wx.Frame):
                 print "ERROR: incorrect number of points."
 
         self.image_name = event.GetString()
-
-        if not self.coords.has_key(self.image_name):
-            if self.prev_image_name:
-                self.coords[self.image_name] = self.coords[self.prev_image_name]
-                self.circles[self.image_name] = self.circles[self.prev_image_name]
-            else:
-                self.coords[self.image_name] = []
-                self.circles[self.image_name] = []
-        filename = os.path.join(self.image_dir, self.image_name)
-        self.current_image = wx.Image(filename)
-
-        if not self.prev_image_name:
-            self.first_click = True
-        self.DisplayImage(Zoom=True)
+        self.mirrorImage(event, shouldSave=False)
 
     def DisplayImage(self, Zoom):
         if Zoom:
@@ -293,11 +282,12 @@ class FaceMapperFrame(wx.Frame):
         if len(self.coords[self.image_name]) < self.n_points or self.n_points == None:
             self.moving = len(self.coords[self.image_name]) - 1
             if not isMoving:
+                print self.image_name
+                print self.coords[self.image_name]
                 self.coords[self.image_name].append(event.Coords)
             else:
                 self.coords[self.image_name][self.moving] = event.Coords
         self.DisplayImage(Zoom=False)
-
 
     def move(self, object):
         self.MovingObject = object
