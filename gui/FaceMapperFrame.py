@@ -40,15 +40,17 @@
 
 import copy
 import csv
+import glob
 import os
 import os.path
 import random
 from collections import defaultdict
 
+import numpy as np
 import wx
 from wx.lib.floatcanvas import NavCanvas, FloatCanvas
 
-IMAGE_FORMATS = [".JPG", ".PNG", ".PPM", ".PGM", ".GIF", ".TIF", ".TIFF", ]
+IMAGE_FORMATS = [".jpg", ".png", ".ppm", ".pgm", ".gif", ".tif", ".tiff", ]
 
 
 class FaceMapperFrame(wx.Frame):
@@ -63,10 +65,8 @@ class FaceMapperFrame(wx.Frame):
         self.image_name = None
         self.prev_image_name = None
         self.scale = scale
-        for name in os.listdir(image_dir):
-            for format in IMAGE_FORMATS:
-                if name.upper().endswith(format):
-                    self.image_names.append(name)
+        for files in IMAGE_FORMATS:
+            self.image_names.extend([os.path.basename(x) for x in glob.glob(self.image_dir + '/*{0}'.format(files))])
         if randomize:
             random.shuffle(self.image_names)
         self.image_names.sort()
@@ -74,18 +74,35 @@ class FaceMapperFrame(wx.Frame):
         self.coords = defaultdict()
         self.circles = {}
 
-        self.leftEyeMax = 10
-        self.rightEyeMax = 10
-        self.mouthMax = 10
+        self.leftEyeMax = 6
+        self.rightEyeMax = 6
+        self.mouthMax = 20
+        self.jawMax = 17
+        self.eyebrowMax = 10
+        self.noseMax = 9
         self.leftEyeNum = 0
         self.rightEyeNum = 0
         self.mouthNum = 0
+        self.jawNum = 0
+        self.eyebrowNum = 0
+        self.noseNum = 0
         self.faceLabels = []
         self.faceLabels.append("Left Eye: {0} out of {1}".format(self.leftEyeNum, self.leftEyeMax))
         self.faceLabels.append("Right Eye: {0} out of {1}".format(self.rightEyeNum, self.rightEyeMax))
         self.faceLabels.append("Mouth: {0} out of {1}".format(self.mouthNum, self.mouthMax))
-        self.faceNums = {"LE": self.leftEyeMax, "ME": self.mouthMax, "RE": self.rightEyeMax}
+        self.faceLabels.append("Jaw: {0} out of {1}".format(self.jawNum, self.jawMax))
+        self.faceLabels.append("Eyebrows: {0} out of {1}".format(self.eyebrowNum, self.eyebrowMax))
+        self.faceLabels.append("Nose: {0} out of {1}".format(self.noseNum, self.noseMax))
+        self.faceNums = {"LE": self.leftEyeMax, "J": self.jawMax, "ME": self.mouthMax, "RE": self.rightEyeMax, 'N': self.noseMax, 'EY': self.eyebrowMax}
         self.first_click = True
+        self.totalDotNum = 0
+
+        for facePart in self.faceNums.keys():
+            self.totalDotNum += self.faceNums[facePart]
+
+        self.coordMatrix = np.zeros((len(self.image_names), self.totalDotNum), dtype=[('x', np.float64), ('y', np.float64)])
+        self.coordMatrix.fill((-1, -1))
+        print(self.coordMatrix)
 
         # ------------- Other Components ----------------
         self.CreateStatusBar()
@@ -111,9 +128,13 @@ class FaceMapperFrame(wx.Frame):
         self.SetMenuBar(menuBar)  # Adding the MenuBar to the Frame content.
 
         # ----------------- Image List ------------------
+        self.leftBox = wx.BoxSizer(wx.VERTICAL)
         self.list = wx.ListBox(self, wx.NewId(), style=wx.LC_REPORT | wx.SUNKEN_BORDER,
                                choices=sorted(self.image_names))
-        self.list.Show(True)
+        #self.list.Show(True)
+        self.currImag = wx.StaticText(self, wx.NewId(), label='Nothing Selected Yet')
+        self.leftBox.Add(self.list)
+        self.leftBox.Add(self.currImag)
 
         # ----------------- Image Display ---------------
         NC = NavCanvas.NavCanvas(self, Debug=0, BackgroundColor="BLACK")
@@ -132,7 +153,7 @@ class FaceMapperFrame(wx.Frame):
 
         # ----------------- Window Layout  -------------
         self.box = wx.BoxSizer(wx.HORIZONTAL)
-        self.box.Add(self.list, 1, wx.EXPAND)
+        self.box.Add(self.leftBox, 1, wx.EXPAND)
         self.box.Add(NC, 3, wx.EXPAND)
         self.box.Add(self.counterBox, 1, wx.EXPAND)
 
@@ -181,16 +202,13 @@ class FaceMapperFrame(wx.Frame):
 
     def onButtonSave(self, event):
         i = self.image_names.index(self.image_name)
-        self.image_names.remove(self.image_name)
-        self.list.Set(self.image_names)
-        self.list.Update()
         if len(self.image_names) > 1:
             if self.image_name:
                 self.prev_image_name = self.image_name
                 if self.n_points != None and len(self.coords[self.image_name]) != self.n_points:
                     print "ERROR: incorrect number of points."
 
-            self.image_name = self.image_names[i]
+            self.image_name = self.image_names[i + 1]
             self.mirrorImage(event, shouldSave=True)
         else:
             print('You\'re Done!')
@@ -209,7 +227,6 @@ class FaceMapperFrame(wx.Frame):
         if not self.prev_image_name:
             self.first_click = True
         self.DisplayImage(Zoom=True)
-        print(self.coords)
         if shouldSave:
             self.onSave(event)
 
@@ -249,11 +266,15 @@ class FaceMapperFrame(wx.Frame):
                 im = self.current_image.Copy()
                 self.Canvas.AddScaledBitmap(im.ConvertToBitmap(), (0, 0), Height=self.imHeight, Position="tl")
                 self.Canvas.ZoomToBB()
+                self.currImag.SetLabel('Current image is {0}'.format(self.image_name))
         self.Canvas._ForeDrawList = []
         i = 1
         self.leftEyeNum = 0
         self.mouthNum = 0
         self.rightEyeNum = 0
+        self.jawNum = 0
+        self.eyebrowNum = 0
+        self.noseNum = 0
         for circle in self.coords[self.image_name]:
             if i <= self.leftEyeMax:
                 self.faceNum = 'LE' + str(i)
@@ -261,41 +282,53 @@ class FaceMapperFrame(wx.Frame):
             elif i <= self.mouthMax + self.leftEyeMax:
                 self.faceNum = 'M' + str(i - self.leftEyeMax)
                 self.mouthNum += 1
-            else:
+            elif i <= self.mouthMax + self.leftEyeMax + self.rightEyeMax:
                 self.faceNum = 'RE' + str(i - self.leftEyeMax - self.mouthMax)
                 self.rightEyeNum += 1
+            elif i <= self.mouthMax + self.leftEyeMax + self.rightEyeMax + self.jawMax:
+                self.faceNum = 'J' + str(i - self.leftEyeMax - self.mouthMax - self.rightEyeMax)
+                self.jawNum += 1
+            elif i <= self.mouthMax + self.leftEyeMax + self.rightEyeMax + self.eyebrowMax:
+                self.faceNum = 'EY' + str(i - self.leftEyeMax - self.mouthMax - self.rightEyeMax - self.jawMax)
+                self.eyebrowNum += 1
+            else:
+                self.faceNum = 'N' + str(
+                    i - self.leftEyeMax - self.mouthMax - self.rightEyeMax - self.jawMax - self.eyebrowMax)
+                self.noseNum += 1
             i += 1
             C = self.Canvas.AddCircle(circle, self.imHeight / 50, LineWidth=1, LineColor='RED',
                                       FillStyle='TRANSPARENT', InForeground=True)
             C.Bind(FloatCanvas.EVT_FC_LEFT_DOWN, self.move)
             self.circles[self.image_name].append(C)
         self.counterList.Clear()
-        self.counterList.Append("Left Eye: {0} out of {1}".format(self.leftEyeNum, self.leftEyeMax))
-        self.counterList.Append("Right Eye: {0} out of {1}".format(self.rightEyeNum, self.rightEyeMax))
-        self.counterList.Append("Mouth: {0} out of {1}".format(self.mouthNum, self.mouthMax))
+        self.makeFaceList(self.counterList)
         self.Canvas.Draw()
 
-    def OnLeftDown(self, event):
-        self.AddCoords(event, isMoving=False)
+    def makeFaceList(self, list):
+        list.Append("1. Left Eye: {0} out of {1}".format(self.leftEyeNum, self.leftEyeMax))
+        list.Append("3. Right Eye: {0} out of {1}".format(self.rightEyeNum, self.rightEyeMax))
+        list.Append("2. Mouth: {0} out of {1}".format(self.mouthNum, self.mouthMax))
+        list.Append("4. Jaw: {0} out of {1}".format(self.jawNum, self.jawMax))
+        list.Append("5. Eyebrows: {0} out of {1}".format(self.eyebrowNum, self.eyebrowMax))
+        list.Append("6. Nose: {0} out of {1}".format(self.noseNum, self.noseMax))
 
-    def AddCoords(self, event, isMoving):
+    def OnLeftDown(self, event):
+        self.AddCoords(event)
+
+    def AddCoords(self, event):
         if len(self.coords[self.image_name]) < self.n_points or self.n_points == None:
-            self.moving = len(self.coords[self.image_name]) - 1
-            if not isMoving:
-                print self.image_name
-                print self.coords[self.image_name]
                 self.coords[self.image_name].append(event.Coords)
-            else:
-                self.coords[self.image_name][self.moving] = event.Coords
         self.DisplayImage(Zoom=False)
 
     def move(self, object):
-        self.MovingObject = object
         self.Canvas.Bind(FloatCanvas.EVT_LEFT_UP, self.movingRelease)
-        self.Canvas.RemoveObject(self.MovingObject)
+        self.Canvas.RemoveObject(object)
+        self.Canvas.Draw()
+        self.removeArray(self.coords[self.image_name], object.XY)
 
     def movingRelease(self, event):
-        self.AddCoords(event, isMoving=True)
+        self.AddCoords(event)
+        print('MOVING RELEASE')
 
     def onOpen(self, event):
         print "Open"
@@ -333,6 +366,16 @@ class FaceMapperFrame(wx.Frame):
 
         # Pass this on to the default handler.
         event.Skip()
+
+    def removeArray(self, L, arr):
+        ind = 0
+        size = len(L)
+        while ind != size and not np.array_equal(L[ind], arr):
+            ind += 1
+        if ind != size:
+            L.pop(ind)
+        else:
+            raise ValueError('array not found in list.')
 
 
 if __name__ == '__main__':
