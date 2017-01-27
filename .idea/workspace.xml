@@ -1,7 +1,9 @@
 <?xml version="1.0" encoding="UTF-8"?>
 <project version="4">
   <component name="ChangeListManager">
-    <list default="true" id="07ea8d64-bb1e-4b01-b08d-f4dd20cf0c67" name="Default" comment="Changed method for finding files">
+    <list default="true" id="07ea8d64-bb1e-4b01-b08d-f4dd20cf0c67" name="Default" comment="Testing">
+      <change type="MODIFICATION" beforePath="$PROJECT_DIR$/.idea/FaceMapper.iml" afterPath="$PROJECT_DIR$/.idea/FaceMapper.iml" />
+      <change type="MODIFICATION" beforePath="$PROJECT_DIR$/.idea/misc.xml" afterPath="$PROJECT_DIR$/.idea/misc.xml" />
       <change type="MODIFICATION" beforePath="$PROJECT_DIR$/.idea/workspace.xml" afterPath="$PROJECT_DIR$/.idea/workspace.xml" />
       <change type="MODIFICATION" beforePath="$PROJECT_DIR$/gui/FaceMapperFrame.py" afterPath="$PROJECT_DIR$/gui/FaceMapperFrame.py" />
     </list>
@@ -21,71 +23,11 @@
       <file leaf-file-name="FaceMapperFrame.py" pinned="false" current-in-tab="true">
         <entry file="file://$PROJECT_DIR$/gui/FaceMapperFrame.py">
           <provider selected="true" editor-type-id="text-editor">
-            <state relative-caret-position="265">
-              <caret line="103" column="8" lean-forward="false" selection-start-line="103" selection-start-column="8" selection-end-line="103" selection-end-column="8" />
+            <state relative-caret-position="348">
+              <caret line="288" column="0" lean-forward="true" selection-start-line="288" selection-start-column="0" selection-end-line="288" selection-end-column="0" />
               <folding>
                 <element signature="e#1727#1738#0" expanded="true" />
               </folding>
-            </state>
-          </provider>
-        </entry>
-      </file>
-      <file leaf-file-name="FloatCanvas.py" pinned="false" current-in-tab="false">
-        <entry file="file://C:/Python27/Lib/site-packages/wx-3.0-msw/wx/lib/floatcanvas/FloatCanvas.py">
-          <provider selected="true" editor-type-id="text-editor">
-            <state relative-caret-position="46835">
-              <caret line="2757" column="0" lean-forward="false" selection-start-line="2757" selection-start-column="0" selection-end-line="2757" selection-end-column="0" />
-              <folding />
-            </state>
-          </provider>
-        </entry>
-      </file>
-      <file leaf-file-name="GUIMode.py" pinned="false" current-in-tab="false">
-        <entry file="file://C:/Python27/Lib/site-packages/wx-3.0-msw/wx/lib/floatcanvas/GUIMode.py">
-          <provider selected="true" editor-type-id="text-editor">
-            <state relative-caret-position="2108">
-              <caret line="129" column="0" lean-forward="false" selection-start-line="129" selection-start-column="0" selection-end-line="129" selection-end-column="0" />
-              <folding />
-            </state>
-          </provider>
-        </entry>
-      </file>
-      <file leaf-file-name="FloatCanvas.py" pinned="false" current-in-tab="false">
-        <entry file="file://$USER_HOME$/Desktop/New folderwc/floatcanvas/FloatCanvas.py">
-          <provider selected="true" editor-type-id="text-editor">
-            <state relative-caret-position="1513">
-              <caret line="91" column="26" lean-forward="false" selection-start-line="91" selection-start-column="26" selection-end-line="91" selection-end-column="26" />
-              <folding />
-            </state>
-          </provider>
-        </entry>
-      </file>
-      <file leaf-file-name="FloatCanvasDemo.py" pinned="false" current-in-tab="false">
-        <entry file="file://$USER_HOME$/Desktop/New folderwc/FloatCanvasDemo.py">
-          <provider selected="true" editor-type-id="text-editor">
-            <state relative-caret-position="9248">
-              <caret line="544" column="44" lean-forward="false" selection-start-line="544" selection-start-column="34" selection-end-line="544" selection-end-column="44" />
-              <folding />
-            </state>
-          </provider>
-        </entry>
-      </file>
-      <file leaf-file-name="numeric.py" pinned="false" current-in-tab="false">
-        <entry file="file://C:/Python27/Lib/site-packages/numpy/core/numeric.py">
-          <provider selected="true" editor-type-id="text-editor">
-            <state relative-caret-position="32113">
-              <caret line="1908" column="0" lean-forward="false" selection-start-line="1908" selection-start-column="0" selection-end-line="1908" selection-end-column="0" />
-              <folding />
-            </state>
-          </provider>
-        </entry>
-      </file>
-      <file leaf-file-name="_core.py" pinned="false" current-in-tab="false">
-        <entry file="file://C:/Python27/Lib/site-packages/wx-3.0-msw/wx/_core.py">
-          <provider selected="true" editor-type-id="text-editor">
-            <state relative-caret-position="135150">
-              <caret line="7951" column="0" lean-forward="false" selection-start-line="7951" selection-start-column="0" selection-end-line="7951" selection-end-column="0" />
-              <folding />
             </state>
           </provider>
         </entry>
@@ -102,15 +44,12 @@
   <component name="FindInProjectRecents">
     <findStrings>
       <find>evt_left</find>
-      <find>coords</find>
       <find>zoomtobb</find>
       <find>onselect</find>
-      <find>self.coords[self.image_name]</find>
       <find>list</find>
       <find>onsave</find>
       <find>self.save</find>
       <find>save</find>
-      <find>print</find>
       <find>evt_fc</find>
       <find>moveme</find>
       <find>timer</find>
@@ -119,6 +58,12 @@
       <find>short_image_names</find>
       <find>onbutton</find>
       <find>faceNum</find>
+      <find>coords</find>
+      <find>self.coords[self.image_name]</find>
+      <find>self.circle</find>
+      <find>faceparts</find>
+      <find>for i in range</find>
+      <find>print</find>
     </findStrings>
   </component>
   <component name="Git.Settings">
@@ -135,10 +80,10 @@
     </option>
   </component>
   <component name="ProjectFrameBounds">
-    <option name="x" value="1912" />
-    <option name="y" value="-8" />
-    <option name="width" value="2576" />
-    <option name="height" value="1096" />
+    <option name="x" value="64" />
+    <option name="y" value="-11" />
+    <option name="width" value="1857" />
+    <option name="height" value="1092" />
   </component>
   <component name="ProjectInspectionProfilesVisibleTreeState">
     <entry key="Project Default">
@@ -202,7 +147,7 @@
   </component>
   <component name="PropertiesComponent">
     <property name="last_opened_file_path" value="$USER_HOME$/Desktop/New folderwc/FloatCanvasDemo.py" />
-    <property name="settings.editor.selected.configurable" value="project.propVCSSupport.Mappings" />
+    <property name="settings.editor.selected.configurable" value="com.jetbrains.python.configuration.PyActiveSdkModuleConfigurable" />
   </component>
   <component name="RunManager" selected="Python.FaceMapperFrame">
     <configuration default="false" name="FaceMapper" type="PythonConfigurationType" factoryName="Python" temporary="true">
@@ -456,27 +401,27 @@
     <servers />
   </component>
   <component name="ToolWindowManager">
-    <frame x="1912" y="-8" width="2576" height="1096" extended-state="6" />
+    <frame x="64" y="-11" width="1857" height="1092" extended-state="6" />
     <layout>
       <window_info id="Project" active="false" anchor="left" auto_hide="false" internal_type="DOCKED" type="DOCKED" visible="false" show_stripe_button="true" weight="0.25" sideWeight="0.5" order="0" side_tool="false" content_ui="combo" />
       <window_info id="TODO" active="false" anchor="bottom" auto_hide="false" internal_type="DOCKED" type="DOCKED" visible="false" show_stripe_button="true" weight="0.33" sideWeight="0.5" order="6" side_tool="false" content_ui="tabs" />
-      <window_info id="Messages" active="false" anchor="bottom" auto_hide="false" internal_type="DOCKED" type="DOCKED" visible="false" show_stripe_button="true" weight="0.32917964" sideWeight="0.5" order="7" side_tool="false" content_ui="tabs" />
+      <window_info id="Messages" active="true" anchor="bottom" auto_hide="false" internal_type="DOCKED" type="DOCKED" visible="true" show_stripe_button="true" weight="0.3282365" sideWeight="0.5" order="7" side_tool="false" content_ui="tabs" />
       <window_info id="Event Log" active="false" anchor="bottom" auto_hide="false" internal_type="DOCKED" type="DOCKED" visible="false" show_stripe_button="true" weight="0.33" sideWeight="0.5" order="7" side_tool="true" content_ui="tabs" />
-      <window_info id="Run Dashboard" active="false" anchor="bottom" auto_hide="false" internal_type="DOCKED" type="DOCKED" visible="false" show_stripe_button="true" weight="0.33" sideWeight="0.5" order="7" side_tool="false" content_ui="tabs" />
       <window_info id="Version Control" active="false" anchor="bottom" auto_hide="false" internal_type="DOCKED" type="DOCKED" visible="false" show_stripe_button="true" weight="0.33" sideWeight="0.5" order="7" side_tool="false" content_ui="tabs" />
       <window_info id="Python Console" active="false" anchor="bottom" auto_hide="false" internal_type="DOCKED" type="DOCKED" visible="false" show_stripe_button="true" weight="0.33" sideWeight="0.5" order="7" side_tool="false" content_ui="tabs" />
-      <window_info id="Run" active="false" anchor="bottom" auto_hide="false" internal_type="DOCKED" type="DOCKED" visible="false" show_stripe_button="true" weight="0.24714434" sideWeight="0.5" order="2" side_tool="false" content_ui="tabs" />
       <window_info id="Structure" active="false" anchor="left" auto_hide="false" internal_type="DOCKED" type="DOCKED" visible="false" show_stripe_button="true" weight="0.25" sideWeight="0.5" order="1" side_tool="false" content_ui="tabs" />
       <window_info id="Terminal" active="false" anchor="bottom" auto_hide="false" internal_type="DOCKED" type="DOCKED" visible="false" show_stripe_button="true" weight="0.33" sideWeight="0.5" order="7" side_tool="false" content_ui="tabs" />
       <window_info id="Favorites" active="false" anchor="left" auto_hide="false" internal_type="DOCKED" type="DOCKED" visible="false" show_stripe_button="true" weight="0.33" sideWeight="0.5" order="2" side_tool="true" content_ui="tabs" />
-      <window_info id="Debug" active="false" anchor="bottom" auto_hide="false" internal_type="DOCKED" type="DOCKED" visible="false" show_stripe_button="true" weight="0.31939977" sideWeight="0.5" order="3" side_tool="false" content_ui="tabs" />
       <window_info id="Cvs" active="false" anchor="bottom" auto_hide="false" internal_type="DOCKED" type="DOCKED" visible="false" show_stripe_button="true" weight="0.25" sideWeight="0.5" order="4" side_tool="false" content_ui="tabs" />
       <window_info id="Message" active="false" anchor="bottom" auto_hide="false" internal_type="DOCKED" type="DOCKED" visible="false" show_stripe_button="true" weight="0.33" sideWeight="0.5" order="0" side_tool="false" content_ui="tabs" />
       <window_info id="Commander" active="false" anchor="right" auto_hide="false" internal_type="DOCKED" type="DOCKED" visible="false" show_stripe_button="true" weight="0.4" sideWeight="0.5" order="0" side_tool="false" content_ui="tabs" />
+      <window_info id="Run Dashboard" active="false" anchor="bottom" auto_hide="false" internal_type="DOCKED" type="DOCKED" visible="false" show_stripe_button="true" weight="0.33" sideWeight="0.5" order="7" side_tool="false" content_ui="tabs" />
       <window_info id="Inspection" active="false" anchor="bottom" auto_hide="false" internal_type="DOCKED" type="DOCKED" visible="false" show_stripe_button="true" weight="0.4" sideWeight="0.5" order="5" side_tool="false" content_ui="tabs" />
+      <window_info id="Run" active="false" anchor="bottom" auto_hide="false" internal_type="DOCKED" type="DOCKED" visible="false" show_stripe_button="true" weight="0.25382262" sideWeight="0.5" order="2" side_tool="false" content_ui="tabs" />
       <window_info id="Hierarchy" active="false" anchor="right" auto_hide="false" internal_type="DOCKED" type="DOCKED" visible="false" show_stripe_button="true" weight="0.25" sideWeight="0.5" order="2" side_tool="false" content_ui="combo" />
       <window_info id="Find" active="false" anchor="bottom" auto_hide="false" internal_type="DOCKED" type="DOCKED" visible="false" show_stripe_button="true" weight="0.33" sideWeight="0.5" order="1" side_tool="false" content_ui="tabs" />
       <window_info id="Ant Build" active="false" anchor="right" auto_hide="false" internal_type="DOCKED" type="DOCKED" visible="false" show_stripe_button="true" weight="0.25" sideWeight="0.5" order="1" side_tool="false" content_ui="tabs" />
+      <window_info id="Debug" active="false" anchor="bottom" auto_hide="false" internal_type="DOCKED" type="DOCKED" visible="false" show_stripe_button="true" weight="0.31939977" sideWeight="0.5" order="3" side_tool="false" content_ui="tabs" />
     </layout>
   </component>
   <component name="VcsContentAnnotationSettings">
@@ -490,7 +435,9 @@
     <MESSAGE value="Added mirroring functionality and dragging. Save function currently bugged." />
     <MESSAGE value="Saving works as expected" />
     <MESSAGE value="Changed method for finding files" />
-    <option name="LAST_COMMIT_MESSAGE" value="Changed method for finding files" />
+    <MESSAGE value="Housekeeping" />
+    <MESSAGE value="Testing" />
+    <option name="LAST_COMMIT_MESSAGE" value="Testing" />
     <option name="OPTIMIZE_IMPORTS_BEFORE_PROJECT_COMMIT" value="true" />
     <option name="REFORMAT_BEFORE_PROJECT_COMMIT" value="true" />
     <option name="REARRANGE_BEFORE_PROJECT_COMMIT" value="true" />
@@ -512,54 +459,62 @@
         </state>
       </provider>
     </entry>
-    <entry file="file://C:/Python27/Lib/site-packages/wx-3.0-msw/wx/lib/floatcanvas/FloatCanvas.py">
+    <entry file="file://$PROJECT_DIR$/gui/FaceMapperFrame.py">
       <provider selected="true" editor-type-id="text-editor">
-        <state relative-caret-position="46869">
-          <caret line="2757" column="0" lean-forward="false" selection-start-line="2757" selection-start-column="0" selection-end-line="2757" selection-end-column="0" />
-          <folding />
+        <state relative-caret-position="0">
+          <caret line="0" column="0" lean-forward="false" selection-start-line="0" selection-start-column="0" selection-end-line="0" selection-end-column="0" />
+          <folding>
+            <element signature="e#1727#1738#0" expanded="true" />
+          </folding>
         </state>
       </provider>
     </entry>
-    <entry file="file://C:/Python27/Lib/site-packages/wx-3.0-msw/wx/lib/floatcanvas/GUIMode.py">
+    <entry file="file://$PROJECT_DIR$/gui/FaceMapperFrame.py">
       <provider selected="true" editor-type-id="text-editor">
-        <state relative-caret-position="2193">
-          <caret line="129" column="0" lean-forward="false" selection-start-line="129" selection-start-column="0" selection-end-line="129" selection-end-column="0" />
-          <folding />
+        <state relative-caret-position="4530">
+          <caret line="302" column="51" lean-forward="true" selection-start-line="302" selection-start-column="51" selection-end-line="302" selection-end-column="51" />
+          <folding>
+            <element signature="e#1727#1738#0" expanded="true" />
+          </folding>
         </state>
       </provider>
     </entry>
-    <entry file="file://$USER_HOME$/Desktop/New folderwc/floatcanvas/FloatCanvas.py">
+    <entry file="file://$PROJECT_DIR$/gui/FaceMapperFrame.py">
       <provider selected="true" editor-type-id="text-editor">
-        <state relative-caret-position="1547">
-          <caret line="91" column="26" lean-forward="true" selection-start-line="91" selection-start-column="26" selection-end-line="91" selection-end-column="26" />
-          <folding />
+        <state relative-caret-position="0">
+          <caret line="0" column="0" lean-forward="false" selection-start-line="0" selection-start-column="0" selection-end-line="0" selection-end-column="0" />
+          <folding>
+            <element signature="e#1727#1738#0" expanded="true" />
+          </folding>
         </state>
       </provider>
     </entry>
-    <entry file="file://$USER_HOME$/Desktop/New folderwc/FloatCanvasDemo.py">
+    <entry file="file://$PROJECT_DIR$/gui/FaceMapperFrame.py">
       <provider selected="true" editor-type-id="text-editor">
-        <state relative-caret-position="9248">
-          <caret line="544" column="44" lean-forward="false" selection-start-line="544" selection-start-column="34" selection-end-line="544" selection-end-column="44" />
-          <folding />
+        <state relative-caret-position="0">
+          <caret line="0" column="0" lean-forward="false" selection-start-line="0" selection-start-column="0" selection-end-line="0" selection-end-column="0" />
+          <folding>
+            <element signature="e#1727#1738#0" expanded="true" />
+          </folding>
         </state>
       </provider>
     </entry>
-    <entry file="file://C:/Python27/Lib/site-packages/numpy/core/numeric.py">
+    <entry file="file://$PROJECT_DIR$/gui/FaceMapperFrame.py">
       <provider selected="true" editor-type-id="text-editor">
-        <state relative-caret-position="32113">
-          <caret line="1908" column="0" lean-forward="false" selection-start-line="1908" selection-start-column="0" selection-end-line="1908" selection-end-column="0" />
-          <folding />
+        <state relative-caret-position="0">
+          <caret line="0" column="0" lean-forward="false" selection-start-line="0" selection-start-column="0" selection-end-line="0" selection-end-column="0" />
+          <folding>
+            <element signature="e#1727#1738#0" expanded="true" />
+          </folding>
         </state>
       </provider>
     </entry>
-    <entry file="file://C:/Python27/Lib/site-packages/wx-3.0-msw/wx/_core.py">
-      <provider selected="true" editor-type-id="text-editor">
-        <state relative-caret-position="135167">
-          <caret line="7951" column="0" lean-forward="false" selection-start-line="7951" selection-start-column="0" selection-end-line="7951" selection-end-column="0" />
-          <folding />
-        </state>
-      </provider>
-    </entry>
+    <entry file="file://C:/Python27/Lib/site-packages/wx-3.0-msw/wx/lib/floatcanvas/FloatCanvas.py" />
+    <entry file="file://C:/Python27/Lib/site-packages/wx-3.0-msw/wx/lib/floatcanvas/GUIMode.py" />
+    <entry file="file://$USER_HOME$/Desktop/New folderwc/floatcanvas/FloatCanvas.py" />
+    <entry file="file://$USER_HOME$/Desktop/New folderwc/FloatCanvasDemo.py" />
+    <entry file="file://C:/Python27/Lib/site-packages/numpy/core/numeric.py" />
+    <entry file="file://C:/Python27/Lib/site-packages/wx-3.0-msw/wx/_core.py" />
     <entry file="file://$PROJECT_DIR$/gui/FaceMapperFrame.py">
       <provider selected="true" editor-type-id="text-editor">
         <state relative-caret-position="0">
@@ -764,88 +719,20 @@
         </state>
       </provider>
     </entry>
-    <entry file="file://C:/Python27/Lib/ntpath.py">
-      <provider selected="true" editor-type-id="text-editor">
-        <state relative-caret-position="173">
-          <caret line="86" column="0" lean-forward="false" selection-start-line="86" selection-start-column="0" selection-end-line="86" selection-end-column="0" />
-        </state>
-      </provider>
-    </entry>
-    <entry file="file://$USER_HOME$/.PyCharmCE2017.1/system/python_stubs/-762174762/__builtin__.py">
-      <provider selected="true" editor-type-id="text-editor">
-        <state relative-caret-position="80">
-          <caret line="2504" column="6" lean-forward="false" selection-start-line="2504" selection-start-column="6" selection-end-line="2504" selection-end-column="6" />
-          <folding />
-        </state>
-      </provider>
-    </entry>
-    <entry file="file://C:/Python27/Lib/site-packages/wx-3.0-msw/wx/_controls.py">
-      <provider selected="true" editor-type-id="text-editor">
-        <state relative-caret-position="182">
-          <caret line="1185" column="0" lean-forward="false" selection-start-line="1185" selection-start-column="0" selection-end-line="1185" selection-end-column="0" />
-          <folding />
-        </state>
-      </provider>
-    </entry>
-    <entry file="file://$PROJECT_DIR$/gui/DictTest.py">
-      <provider selected="true" editor-type-id="text-editor">
-        <state relative-caret-position="51">
-          <caret line="3" column="13" lean-forward="true" selection-start-line="3" selection-start-column="13" selection-end-line="3" selection-end-column="13" />
-        </state>
-      </provider>
-    </entry>
-    <entry file="file://C:/Python27/Lib/site-packages/numpy/core/numeric.py">
-      <provider selected="true" editor-type-id="text-editor">
-        <state relative-caret-position="32113">
-          <caret line="1908" column="0" lean-forward="false" selection-start-line="1908" selection-start-column="0" selection-end-line="1908" selection-end-column="0" />
-          <folding />
-        </state>
-      </provider>
-    </entry>
-    <entry file="file://$USER_HOME$/Desktop/New folderwc/FloatCanvasDemo.py">
-      <provider selected="true" editor-type-id="text-editor">
-        <state relative-caret-position="9248">
-          <caret line="544" column="44" lean-forward="false" selection-start-line="544" selection-start-column="34" selection-end-line="544" selection-end-column="44" />
-          <folding />
-        </state>
-      </provider>
-    </entry>
-    <entry file="file://$USER_HOME$/Desktop/New folderwc/floatcanvas/FloatCanvas.py">
-      <provider selected="true" editor-type-id="text-editor">
-        <state relative-caret-position="1513">
-          <caret line="91" column="26" lean-forward="false" selection-start-line="91" selection-start-column="26" selection-end-line="91" selection-end-column="26" />
-          <folding />
-        </state>
-      </provider>
-    </entry>
-    <entry file="file://C:/Python27/Lib/site-packages/wx-3.0-msw/wx/lib/floatcanvas/GUIMode.py">
-      <provider selected="true" editor-type-id="text-editor">
-        <state relative-caret-position="2108">
-          <caret line="129" column="0" lean-forward="false" selection-start-line="129" selection-start-column="0" selection-end-line="129" selection-end-column="0" />
-          <folding />
-        </state>
-      </provider>
-    </entry>
-    <entry file="file://C:/Python27/Lib/site-packages/wx-3.0-msw/wx/lib/floatcanvas/FloatCanvas.py">
-      <provider selected="true" editor-type-id="text-editor">
-        <state relative-caret-position="46835">
-          <caret line="2757" column="0" lean-forward="false" selection-start-line="2757" selection-start-column="0" selection-end-line="2757" selection-end-column="0" />
-          <folding />
-        </state>
-      </provider>
-    </entry>
-    <entry file="file://C:/Python27/Lib/site-packages/wx-3.0-msw/wx/_core.py">
-      <provider selected="true" editor-type-id="text-editor">
-        <state relative-caret-position="135150">
-          <caret line="7951" column="0" lean-forward="false" selection-start-line="7951" selection-start-column="0" selection-end-line="7951" selection-end-column="0" />
-          <folding />
-        </state>
-      </provider>
-    </entry>
+    <entry file="file://C:/Python27/Lib/ntpath.py" />
+    <entry file="file://$USER_HOME$/.PyCharmCE2017.1/system/python_stubs/-762174762/__builtin__.py" />
+    <entry file="file://C:/Python27/Lib/site-packages/wx-3.0-msw/wx/_controls.py" />
+    <entry file="file://$PROJECT_DIR$/gui/DictTest.py" />
+    <entry file="file://C:/Python27/Lib/site-packages/numpy/core/numeric.py" />
+    <entry file="file://$USER_HOME$/Desktop/New folderwc/FloatCanvasDemo.py" />
+    <entry file="file://$USER_HOME$/Desktop/New folderwc/floatcanvas/FloatCanvas.py" />
+    <entry file="file://C:/Python27/Lib/site-packages/wx-3.0-msw/wx/lib/floatcanvas/GUIMode.py" />
+    <entry file="file://C:/Python27/Lib/site-packages/wx-3.0-msw/wx/lib/floatcanvas/FloatCanvas.py" />
+    <entry file="file://C:/Python27/Lib/site-packages/wx-3.0-msw/wx/_core.py" />
     <entry file="file://$PROJECT_DIR$/gui/FaceMapperFrame.py">
       <provider selected="true" editor-type-id="text-editor">
-        <state relative-caret-position="265">
-          <caret line="103" column="8" lean-forward="false" selection-start-line="103" selection-start-column="8" selection-end-line="103" selection-end-column="8" />
+        <state relative-caret-position="348">
+          <caret line="288" column="0" lean-forward="true" selection-start-line="288" selection-start-column="0" selection-end-line="288" selection-end-column="0" />
           <folding>
             <element signature="e#1727#1738#0" expanded="true" />
           </folding>
