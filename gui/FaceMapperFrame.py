@@ -71,20 +71,12 @@ class FaceMapperFrame(wx.Frame):
         self.filename = None
         self.coords = defaultdict()
         self.faceParts = OrderedDict()
-
-        self.faceParts["Left Eye"] = [0, 6]
-        self.faceParts["Right Eye"] = [0, 6]
-        self.faceParts["Mouth"] = [0, 20]
-        self.faceParts["Jaw"] = [0, 17]
-        self.faceParts["Eyebrows"] = [0, 10]
-        self.faceParts["Nose"] = [0, 9]
-
         self.faceLabels = []
-        partIndex = 1
-        for facePart in self.faceParts.keys():
-            self.faceLabels.append("{0}. {1}: {2} out of {3}".format(partIndex, facePart, self.faceParts[facePart][0],
-                                                                     self.faceParts[facePart][1]))
-            partIndex += 1
+
+        self.resetFaceParts()
+        self.resetFaceLabels()
+
+
         self.faceNums = {}
 
         for facePart in self.faceParts.keys():
@@ -174,6 +166,23 @@ class FaceMapperFrame(wx.Frame):
         wx.EVT_MENU(self, wx.ID_SAVE, self.onSave)
         wx.EVT_MENU(self, wx.ID_SAVEAS, self.onSaveAs)
 
+    def resetFaceParts(self):
+        self.faceParts.clear()
+        self.faceParts["Left Eye"] = [0, 6]
+        self.faceParts["Right Eye"] = [0, 6]
+        self.faceParts["Mouth"] = [0, 20]
+        self.faceParts["Jaw"] = [0, 17]
+        self.faceParts["Eyebrows"] = [0, 10]
+        self.faceParts["Nose"] = [0, 9]
+
+    def resetFaceLabels(self):
+        self.faceLabels = []
+        partIndex = 1
+        for facePart in self.faceParts.keys():
+            self.faceLabels.append("{0}. {1}: {2} out of {3}".format(partIndex, facePart, self.faceParts[facePart][0],
+                                                                     self.faceParts[facePart][1]))
+            partIndex += 1
+
     def BindAllMouseEvents(self):
         if not self.EventsAreBound:
             ## Here is how you catch FloatCanvas mouse events
@@ -213,12 +222,14 @@ class FaceMapperFrame(wx.Frame):
                     print "ERROR: incorrect number of points."
 
             self.image_name = self.image_names[i + 1]
+            self.imageIndex = self.image_names.index(self.image_name)
             self.mirrorImage(event, shouldSave=True)
         else:
             print('You\'re Done!')
 
     def mirrorImage(self, event, shouldSave):
-        if self.image_names.index(self.image_name) >= 1:
+        if self.image_names.index(self.image_name) >= 1 and np.array_equal(self.coordMatrix[self.imageIndex, 0,],
+                                                                           self.nullArray):
             self.coordMatrix[self.imageIndex,] = self.coordMatrix[self.imageIndex - 1,]
 
         filename = os.path.join(self.image_dir, self.image_name)
@@ -241,13 +252,12 @@ class FaceMapperFrame(wx.Frame):
                 firstRow.append(facePart + str(j))
                 firstRow.append('')
         writer.writerow(firstRow)
-        keys = self.coords.keys()
-        keys.sort()
-        for key in keys:
-            row = [key]
-            for point in self.coords[key]:
-                row.append(point[0])
-                row.append(point[1])
+        for image in self.image_names:
+            row = [image]
+            for point in self.coordMatrix[self.image_names.index(image),]:
+                if not np.array_equal(self.nullArray, point):
+                    row.append(point[0])
+                    row.append(point[1])
             writer.writerow(row)
 
     def onSelect(self, event):
@@ -270,12 +280,20 @@ class FaceMapperFrame(wx.Frame):
                 self.currImag.SetLabel('Current image is {0}'.format(self.image_name))
         self.Canvas._ForeDrawList = []
 
+        self.resetFaceParts()
+        partCounter = 0
         for circle in self.coordMatrix[self.imageIndex,]:
             if not (np.array_equal(circle, self.nullArray)):
                 C = self.Canvas.AddCircle(circle, self.imHeight / 50, LineWidth=1, LineColor='RED',
                                           FillStyle='TRANSPARENT', InForeground=True)
-                C.Bind(FloatCanvas.EVT_FC_LEFT_DOWN, self.move)
+                C.Bind(FloatCanvas.EVT_FC_LEFT_DOWN, self.CircleLeftDown)
+                facePart = self.faceParts[self.faceParts.keys()[partCounter]]
+                facePart[0] += 1
+                if facePart[0] == facePart[1]:
+                    partCounter += 1
+
         self.counterList.Clear()
+        self.resetFaceLabels()
         self.counterList.Set(self.faceLabels)
         self.Canvas.Draw()
 
@@ -284,20 +302,38 @@ class FaceMapperFrame(wx.Frame):
         self.AddCoords(event)
 
     def AddCoords(self, event):
-        self.dotNum += 1
-        self.coordMatrix[self.imageIndex, self.dotNum - 1,] = event.Coords
+        self.dotNum = 0
+        while not np.array_equal(self.coordMatrix[self.imageIndex, self.dotNum,], self.nullArray):
+            self.dotNum += 1
+        self.coordMatrix[self.imageIndex, self.dotNum,] = event.Coords
         self.DisplayImage(Zoom=False)
 
-    def move(self, object):
-        self.Canvas.Bind(FloatCanvas.EVT_LEFT_UP, self.movingRelease)
+    def removeDupes(self, matrix, coords):
+        hasDupe = False
+        for arr in matrix:
+            if np.array_equal(arr, coords) and not hasDupe:
+                hasDupe = True
+            elif np.array_equal(arr, coords) and hasDupe:
+                arr = self.nullArray
+
+    def CircleLeftDown(self, object):
+        self.Canvas.UnBindAll()
         self.Canvas.RemoveObject(object)
         self.removeArray(self.coordMatrix[self.imageIndex,], object.XY)
+        self.Canvas.Bind(FloatCanvas.EVT_LEFT_UP, self.movingRelease)
         self.Canvas.Draw()
 
 
+
     def movingRelease(self, event):
-        self.AddCoords(event)
-        print('MOVING RELEASE')
+        hasDot = False
+        for dot in self.coordMatrix[self.imageIndex,]:
+            if not np.array_equal(dot, self.nullArray) and np.array_equal(dot, event.Coords):
+                hasDot = True
+        if not hasDot:
+            self.AddCoords(event)
+        self.BindAllMouseEvents()
+
 
     def onOpen(self, event):
         print "Open"
