@@ -38,7 +38,6 @@
 
 
 
-import copy
 import csv
 import glob
 import numpy as np
@@ -71,7 +70,6 @@ class FaceMapperFrame(wx.Frame):
         self.image_names.sort()
         self.filename = None
         self.coords = defaultdict()
-        self.circles = {}
         self.faceParts = OrderedDict()
 
         self.faceParts["Left Eye"] = [0, 6]
@@ -105,8 +103,10 @@ class FaceMapperFrame(wx.Frame):
         for facePart in self.faceNums.keys():
             self.totalDotNum += self.faceNums[facePart]
 
-        self.coordMatrix = np.zeros((len(self.image_names), self.totalDotNum), dtype=[('x', np.float64), ('y', np.float64)])
-        self.coordMatrix.fill((np.float_(-1), np.float_(-1)))
+        self.nullArray = np.array((-1, -1), dtype=np.float_)
+        self.coordMatrix = np.zeros((len(self.image_names), self.totalDotNum, 2))
+        self.coordMatrix.fill(-1.0)
+
 
         # ------------- Other Components ----------------
         self.CreateStatusBar()
@@ -218,13 +218,9 @@ class FaceMapperFrame(wx.Frame):
             print('You\'re Done!')
 
     def mirrorImage(self, event, shouldSave):
-        if not self.coords.has_key(self.image_name):
-            if self.prev_image_name:
-                self.coords[self.image_name] = copy.copy(self.coords[self.prev_image_name])
-                self.circles[self.image_name] = self.circles[self.prev_image_name]
-            else:
-                self.coords[self.image_name] = []
-                self.circles[self.image_name] = []
+        if self.image_names.index(self.image_name) >= 1:
+            self.coordMatrix[self.imageIndex,] = self.coordMatrix[self.imageIndex - 1,]
+
         filename = os.path.join(self.image_dir, self.image_name)
         self.current_image = wx.Image(filename)
 
@@ -261,6 +257,7 @@ class FaceMapperFrame(wx.Frame):
                 print "ERROR: incorrect number of points."
 
         self.image_name = event.GetString()
+        self.imageIndex = self.image_names.index(self.image_name)
         self.mirrorImage(event, shouldSave=False)
 
     def DisplayImage(self, Zoom):
@@ -273,12 +270,11 @@ class FaceMapperFrame(wx.Frame):
                 self.currImag.SetLabel('Current image is {0}'.format(self.image_name))
         self.Canvas._ForeDrawList = []
 
-        for circle in self.coordMatrix[self.image_names.index(self.image_name),]:
-            if not (circle['x'] == -1.0 and circle['y'] == -1.0):
+        for circle in self.coordMatrix[self.imageIndex,]:
+            if not (np.array_equal(circle, self.nullArray)):
                 C = self.Canvas.AddCircle(circle, self.imHeight / 50, LineWidth=1, LineColor='RED',
                                           FillStyle='TRANSPARENT', InForeground=True)
                 C.Bind(FloatCanvas.EVT_FC_LEFT_DOWN, self.move)
-                self.circles[self.image_name].append(C)
         self.counterList.Clear()
         self.counterList.Set(self.faceLabels)
         self.Canvas.Draw()
@@ -289,15 +285,15 @@ class FaceMapperFrame(wx.Frame):
 
     def AddCoords(self, event):
         self.dotNum += 1
-        self.coordMatrix[self.image_names.index(self.image_name), self.dotNum - 1] = event.Coords
-        print self.coordMatrix[self.image_names.index(self.image_name),]
+        self.coordMatrix[self.imageIndex, self.dotNum - 1,] = event.Coords
         self.DisplayImage(Zoom=False)
 
     def move(self, object):
         self.Canvas.Bind(FloatCanvas.EVT_LEFT_UP, self.movingRelease)
         self.Canvas.RemoveObject(object)
+        self.removeArray(self.coordMatrix[self.imageIndex,], object.XY)
         self.Canvas.Draw()
-        self.removeArray(self.coords[self.image_name], object.XY)
+
 
     def movingRelease(self, event):
         self.AddCoords(event)
@@ -346,7 +342,7 @@ class FaceMapperFrame(wx.Frame):
         while ind != size and not np.array_equal(L[ind], arr):
             ind += 1
         if ind != size:
-            L.pop(ind)
+            L[ind] = self.nullArray
         else:
             raise ValueError('array not found in list.')
 
