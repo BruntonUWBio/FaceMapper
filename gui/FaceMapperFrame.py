@@ -37,15 +37,15 @@
 # SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 
 
-
 import csv
 import glob
 import numpy as np
 import os
 import os.path
 import random
-import wx
 from collections import defaultdict, OrderedDict
+
+import wx
 from wx.lib.floatcanvas import NavCanvas, FloatCanvas
 
 IMAGE_FORMATS = [".jpg", ".png", ".ppm", ".pgm", ".gif", ".tif", ".tiff", ]
@@ -133,7 +133,7 @@ class FaceMapperFrame(wx.Frame):
         self.leftBox.Add(self.currImag)
 
         # ----------------- Image Display ---------------
-        NC = NavCanvas.NavCanvas(self, Debug=0, BackgroundColor="BLACK")
+        NC = NavCanvas.NavCanvas(self, size=(500, 500), Debug=0, BackgroundColor="BLACK")
         self.Canvas = NC.Canvas
         self.Canvas.MinScale = 14
         self.Canvas.MaxScale = 500
@@ -158,13 +158,26 @@ class FaceMapperFrame(wx.Frame):
         self.Layout()
 
         # -------------- Event Handling ----------------
-        wx.EVT_LISTBOX(self, self.list.GetId(), self.onSelect)
-        wx.EVT_BUTTON(self, self.saveButton.GetId(), self.onButtonSave)
+        self.Bind(wx.EVT_LISTBOX, self.onSelect, id=self.list.GetId())
+        self.Bind(wx.EVT_BUTTON, self.onButtonSave, id=self.saveButton.GetId())
         self.EventsAreBound = False
         self.BindAllMouseEvents()
-        wx.EVT_MENU(self, wx.ID_OPEN, self.onOpen)
-        wx.EVT_MENU(self, wx.ID_SAVE, self.onSave)
-        wx.EVT_MENU(self, wx.ID_SAVEAS, self.onSaveAs)
+        self.Bind(wx.EVT_MENU, self.onOpen, id=wx.ID_OPEN)
+        self.Bind(wx.EVT_MENU, self.onSave, id=wx.ID_SAVE)
+        self.Bind(wx.EVT_MENU, self.onSaveAs, id=wx.ID_SAVEAS)
+
+
+
+
+        # --------------- Video editing ----------------
+        # FFMPEG_BIN = "ffmpeg"
+        # import subprocess as sp
+        # command = [FFMPEG_BIN,
+        #           '-i', 'myHolidays.mp4',
+        #           '-f', 'image2pipe',
+        #           '-pix_fmt', 'rgb24',
+        #           '-vcodec', 'rawvideo', '-']
+        # pipe = sp.Popen(command, stdout=sp.PIPE, bufsize=10 ** 8)
 
     def resetFaceParts(self):
         self.faceParts.clear()
@@ -284,8 +297,13 @@ class FaceMapperFrame(wx.Frame):
         partCounter = 0
         for circle in self.coordMatrix[self.imageIndex,]:
             if not (np.array_equal(circle, self.nullArray)):
-                C = self.Canvas.AddCircle(circle, self.imHeight / 50, LineWidth=1, LineColor='RED',
-                                          FillStyle='TRANSPARENT', InForeground=True)
+                # C = self.Canvas.AddCircle(circle, self.imHeight / 50, LineWidth=1, LineColor='RED',
+                #                          FillStyle='TRANSPARENT', InForeground=True)
+                # C.Bind(FloatCanvas.EVT_FC_LEFT_DOWN, self.CircleLeftDown)
+                C = FloatCanvas.Circle(XY=circle, Diameter=1.9, LineWidth=.5, LineColor='Red',
+                                       FillStyle='Transparent', InForeground=True)
+                self.Canvas.AddObject(C)
+                self.Canvas.Draw(Force=True)
                 C.Bind(FloatCanvas.EVT_FC_LEFT_DOWN, self.CircleLeftDown)
                 facePart = self.faceParts[self.faceParts.keys()[partCounter]]
                 facePart[0] += 1
@@ -295,7 +313,7 @@ class FaceMapperFrame(wx.Frame):
         self.counterList.Clear()
         self.resetFaceLabels()
         self.counterList.Set(self.faceLabels)
-        self.Canvas.Draw()
+        self.Canvas.Draw(Force=True)
 
 
     def OnLeftDown(self, event):
