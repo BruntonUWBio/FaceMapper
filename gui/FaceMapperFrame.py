@@ -52,9 +52,14 @@ IMAGE_FORMATS = [".jpg", ".png", ".ppm", ".pgm", ".gif", ".tif", ".tiff", ]
 
 
 class FaceMapperFrame(wx.Frame):
-    def __init__(self, parent, id, name, image_dir, n_points=None, randomize=False, scale=1.0):
+    def __init__(self, parent, id, name, image_dir, n_points=None, randomize=False, scale=1.0, isVideo=False):
         wx.Frame.__init__(self, parent, id, name)
 
+        if isVideo:
+            os.mkdir(image_dir + '_PICS')
+            print("ffmpeg -i {0} -vf fps=1/5 {1}".format(image_dir, image_dir + '_PICS/out%02d.png'))
+            os.system("ffmpeg -i {0} -vf fps=1/5 {1}".format(image_dir, image_dir + '_PICS/out%02d.png'))
+            image_dir = image_dir + '_PICS'
         # ---------------- Basic Data -------------------
         self.image_dir = image_dir
         self.n_points = n_points
@@ -169,6 +174,7 @@ class FaceMapperFrame(wx.Frame):
         #           '-pix_fmt', 'rgb24',
         #           '-vcodec', 'rawvideo', '-']
         # pipe = sp.Popen(command, stdout=sp.PIPE, bufsize=10 ** 8)
+
 
     def resetFaceParts(self):
         self.faceParts.clear()
@@ -406,19 +412,38 @@ class FaceMapperFrame(wx.Frame):
 
 if __name__ == '__main__':
     app = wx.App(False)
+    type_dialog = wx.SingleChoiceDialog(None, message="Options", caption="Select either",
+                                        choices=["video", "image directory"])
+    choice = type_dialog.ShowModal()
+    frame = None
+    if choice == wx.ID_OK:
+        if type_dialog.GetStringSelection() == "image directory":
+            dir_dialog = wx.DirDialog(None, message="Please select a directory that contains images.")
+            err = dir_dialog.ShowModal()
+            image_dir = '.'
+            if (err == wx.ID_OK):
+                image_dir = dir_dialog.GetPath()
+            else:
+                print "Error getting path:", err
 
-    dir_dialog = wx.DirDialog(None, message="Please select a directory that contains images.")
-    err = dir_dialog.ShowModal()
-    image_dir = '.'
-    if (err == wx.ID_OK):
-        image_dir = dir_dialog.GetPath()
-    else:
-        print "Error getting path:", err
+            print "Image Dir", image_dir
+            scale = 1.0
 
-    print "Image Dir", image_dir
-    scale = 1.0
+            frame = FaceMapperFrame(None, wx.ID_ANY, "FaceMapper", image_dir, n_points=None, randomize=True,
+                                    scale=scale, isVideo=False)
+        else:
+            file_dialog = wx.FileDialog(None, message="Please select a video file.")
+            err = file_dialog.ShowModal()
+            video = '.'
+            if (err == wx.ID_OK):
+                video = file_dialog.GetPath()
+            else:
+                print("Error getting video file")
+            print "Video", video
+            scale = 1.0
 
-    frame = FaceMapperFrame(None, wx.ID_ANY, "FaceMapper", image_dir, n_points=None, randomize=True,
-                            scale=scale)
-    frame.Show(True)
-    app.MainLoop()
+            frame = FaceMapperFrame(None, wx.ID_ANY, "FaceMapper", video, n_points=None, randomize=True,
+                                    scale=scale, isVideo=True)
+
+        frame.Show(True)
+        app.MainLoop()
