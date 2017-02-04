@@ -76,29 +76,20 @@ class FaceMapperFrame(wx.Frame):
         self.resetFaceParts()
         self.resetFaceLabels()
 
-
-        self.faceNums = {}
-
-        for facePart in self.faceParts.keys():
-            split = facePart.split()
-            abbr = ''
-            for i in range(len(split)):
-                abbr += split[i].strip()[0]
-            self.faceNums[abbr] = self.faceParts[facePart][1]
-
+        self.faceNums = OrderedDict()
+        self.resetFaceNums()
 
         self.first_click = True
         self.dotNum = 0
         self.partCounter = 1
         self.totalDotNum = 0
 
-        for facePart in self.faceNums.keys():
-            self.totalDotNum += self.faceNums[facePart]
+        for facePart in self.faceParts.keys():
+            self.totalDotNum += self.faceParts[facePart][1]
 
         self.nullArray = np.array((-1, -1), dtype=np.float_)
         self.coordMatrix = np.zeros((len(self.image_names), self.totalDotNum, 2))
         self.coordMatrix.fill(-1.0)
-
 
         # ------------- Other Components ----------------
         self.CreateStatusBar()
@@ -195,6 +186,15 @@ class FaceMapperFrame(wx.Frame):
             self.faceLabels.append("{0}. {1}: {2} out of {3}".format(partIndex, facePart, self.faceParts[facePart][0],
                                                                      self.faceParts[facePart][1]))
             partIndex += 1
+
+    def resetFaceNums(self):
+        self.faceNums.clear()
+        for facePart in self.faceParts.keys():
+            split = facePart.split()
+            abbr = ''
+            for i in range(len(split)):
+                abbr += split[i].strip()[0]
+            self.faceNums[abbr] = self.faceParts[facePart][0]
 
     def BindAllMouseEvents(self):
         if not self.EventsAreBound:
@@ -297,16 +297,19 @@ class FaceMapperFrame(wx.Frame):
         partCounter = 0
         for circle in self.coordMatrix[self.imageIndex,]:
             if not (np.array_equal(circle, self.nullArray)):
-                # C = self.Canvas.AddCircle(circle, self.imHeight / 50, LineWidth=1, LineColor='RED',
-                #                          FillStyle='TRANSPARENT', InForeground=True)
-                # C.Bind(FloatCanvas.EVT_FC_LEFT_DOWN, self.CircleLeftDown)
-                C = FloatCanvas.Circle(XY=circle, Diameter=1.9, LineWidth=.5, LineColor='Red',
-                                       FillStyle='Transparent', InForeground=True)
-                self.Canvas.AddObject(C)
-                self.Canvas.Draw(Force=True)
-                C.Bind(FloatCanvas.EVT_FC_LEFT_DOWN, self.CircleLeftDown)
                 facePart = self.faceParts[self.faceParts.keys()[partCounter]]
                 facePart[0] += 1
+                self.resetFaceNums()
+                C = FloatCanvas.Circle(XY=circle, Diameter=1.1, LineWidth=.5, LineColor='Red',
+                                       FillStyle='Transparent', InForeground=True)
+                T = FloatCanvas.ScaledText(XY=(circle[0] - .5, circle[1] - 1), Size=.5,
+                                           String=self.faceNums.keys()[partCounter] +
+                                                  str(self.faceNums[self.faceNums.keys()[partCounter]]),
+                                           Color='Red', InForeground=True)
+                C = self.Canvas.AddObject(C)
+                T = self.Canvas.AddObject(T)
+                self.Canvas.Draw(Force=True)
+                C.Bind(FloatCanvas.EVT_FC_LEFT_DOWN, self.CircleLeftDown)
                 if facePart[0] == facePart[1]:
                     partCounter += 1
 
@@ -323,8 +326,9 @@ class FaceMapperFrame(wx.Frame):
         self.dotNum = 0
         while not np.array_equal(self.coordMatrix[self.imageIndex, self.dotNum,], self.nullArray):
             self.dotNum += 1
-        self.coordMatrix[self.imageIndex, self.dotNum,] = event.Coords
-        self.DisplayImage(Zoom=False)
+        if self.dotNum <= len(self.coordMatrix[self.imageIndex,]):
+            self.coordMatrix[self.imageIndex, self.dotNum,] = event.Coords
+            self.DisplayImage(Zoom=False)
 
     def removeDupes(self, matrix, coords):
         hasDupe = False
@@ -336,11 +340,10 @@ class FaceMapperFrame(wx.Frame):
 
     def CircleLeftDown(self, object):
         self.Canvas.UnBindAll()
-        self.Canvas.RemoveObject(object)
+        self.Canvas._ForeDrawList = []
         self.removeArray(self.coordMatrix[self.imageIndex,], object.XY)
         self.Canvas.Bind(FloatCanvas.EVT_LEFT_UP, self.movingRelease)
         self.Canvas.Draw()
-
 
 
     def movingRelease(self, event):
