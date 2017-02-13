@@ -328,11 +328,21 @@ class FaceMapperFrame(wx.Frame):
     #            self.Canvas._ForeDrawList[i].XY = self.nullArray[0:2]
 
     def CircleLeftDown(self, object):
+        self.draggingCircle = object
         self.Canvas.UnBindAll()
         ind = self.removeArray(self.coordMatrix[self.imageIndex,], object.XY)
         self.Canvas._ForeDrawList[ind].XY = np.array([-1.0, -1.0])
+        # self.Canvas.Bind(FloatCanvas.EVT_MOTION, self.drag)
         self.Canvas.Bind(FloatCanvas.EVT_LEFT_UP, self.movingRelease)
         # self.Canvas.Draw()
+
+    # def drag(self, event):
+    #    if event.Dragging:
+    #        self.coordMatrix[self.imageIndex,self.coordMatrix[self.imageIndex,].tolist().index(self.draggingCircle),0:2] = event.Coords
+    #        self.draggingCircle.XY = event.Coords
+    #        self.Canvas.Draw()
+    #    else:
+    #        self.movingRelease(event)
 
     def CircleResize(self, object):
         self.Canvas.UnBindAll()
