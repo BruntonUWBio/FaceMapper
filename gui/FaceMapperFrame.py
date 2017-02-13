@@ -132,18 +132,6 @@ class FaceMapperFrame(wx.Frame):
 
 
 
-
-        # --------------- Video editing ----------------
-        # FFMPEG_BIN = "ffmpeg"
-        # import subprocess as sp
-        # command = [FFMPEG_BIN,
-        #           '-i', 'myHolidays.mp4',
-        #           '-f', 'image2pipe',
-        #           '-pix_fmt', 'rgb24',
-        #           '-vcodec', 'rawvideo', '-']
-        # pipe = sp.Popen(command, stdout=sp.PIPE, bufsize=10 ** 8)
-
-
     def resetFaceParts(self):
         self.faceParts.clear()
         self.faceParts["Left Eye"] = [0, 6]
@@ -218,6 +206,9 @@ class FaceMapperFrame(wx.Frame):
         if self.image_names.index(self.image_name) >= 1 and np.array_equal(self.coordMatrix[self.imageIndex, 0,],
                                                                            self.nullArray):
             self.coordMatrix[self.imageIndex,] = self.coordMatrix[self.imageIndex - 1,]
+            for circle in self.coordMatrix[self.imageIndex,]:
+                if not np.array_equal(circle, self.nullArray):
+                    circle[2] = 0
 
         filename = os.path.join(self.image_dir, self.image_name)
         self.current_image = wx.Image(filename)
@@ -265,74 +256,100 @@ class FaceMapperFrame(wx.Frame):
                 self.Canvas.AddScaledBitmap(im.ConvertToBitmap(), (0, 0), Height=self.imHeight, Position="tl")
                 self.Canvas.ZoomToBB()
                 self.currImag.SetLabel('Current image is {0}'.format(self.image_name))
-        #self.Canvas._ForeDrawList = []
 
         self.resetFaceParts()
         partCounter = 0
-        for circle in self.coordMatrix[self.imageIndex,]:
+        for index, circle in enumerate(self.coordMatrix[self.imageIndex,]):
             if not (np.array_equal(circle, self.nullArray)) and circle[2] == 0:
-                C = FloatCanvas.Circle(XY=circle[0:2], Diameter=self.dotDiam, LineWidth=.5, LineColor='Red',
-                                       FillStyle='Transparent', InForeground=True)
+
                 # T = FloatCanvas.ScaledText(XY=(circle[0] - .5, circle[1] - 1), Size=.5,
                 #                           String=list(self.faceNums.keys())[partCounter] +
                 #                                  str(self.faceNums[list(self.faceNums.keys())[partCounter]]),
                 #                           Color='Red', InForeground=True)
-                C = self.Canvas.AddObject(C)
+                if index < len(self.Canvas._ForeDrawList):
+                    self.Canvas._ForeDrawList[index].XY = circle[0:2]
+                else:
+                    C = FloatCanvas.Circle(XY=circle[0:2], Diameter=self.dotDiam, LineWidth=.5, LineColor='Red',
+                                           FillStyle='Transparent', InForeground=True)
+
+                    C = self.Canvas.AddObject(C)
                 # T = self.Canvas.AddObject(T)
                 circle[2] = 1
-                self.Canvas.Draw()
-                C.Bind(FloatCanvas.EVT_FC_LEFT_DOWN, self.CircleLeftDown)
 
         for circle in self.Canvas._ForeDrawList:
-            facePart = self.faceParts[list(self.faceParts.keys())[partCounter]]
-            facePart[0] += 1
-            self.resetFaceNums()
-            if facePart[0] == facePart[1]:
-                partCounter += 1
+            if not np.array_equal(circle.XY, self.nullArray[0:2]):
+                facePart = self.faceParts[list(self.faceParts.keys())[partCounter]]
+                facePart[0] += 1
+                self.resetFaceNums()
+                if facePart[0] == facePart[1]:
+                    partCounter += 1
 
         self.counterList.Clear()
         self.resetFaceLabels()
         self.counterList.Set(self.faceLabels)
+        for C in self.Canvas._ForeDrawList:
+            if C is not None:
+                C.Bind(FloatCanvas.EVT_FC_LEFT_DOWN, self.CircleLeftDown)
+                C.Bind(FloatCanvas.EVT_FC_RIGHT_DOWN, self.CircleResize)
         self.Canvas.Draw()
-
 
     def OnLeftDown(self, event):
         self.AddCoords(event)
 
     def AddCoords(self, event):
         self.dotNum = 0
-        while not (self.coordMatrix[self.imageIndex, self.dotNum, 2] == 0 or self.coordMatrix[
-            self.imageIndex, self.dotNum, 2] == -1.0):
-            self.dotNum += 1
-        if self.dotNum <= len(self.coordMatrix[self.imageIndex,]):
+        self.midChanged = False
+        while True:
+            if len(self.Canvas._ForeDrawList) > self.dotNum and np.array_equal(
+                    self.Canvas._ForeDrawList[self.dotNum].XY, self.nullArray[0:2]):
+                self.Canvas._ForeDrawList[self.dotNum].XY = event.Coords
+                self.coordMatrix[self.imageIndex, self.dotNum, 0:2] = event.Coords
+                self.coordMatrix[self.imageIndex, self.dotNum, 2] = 0
+                self.midChanged = True
+            if (self.coordMatrix[self.imageIndex, self.dotNum, 2] == 0 or self.coordMatrix[
+                self.imageIndex, self.dotNum, 2] == -1.0):
+                break
+            else:
+                self.dotNum += 1
+        if self.dotNum <= len(self.coordMatrix[self.imageIndex,]) and not self.midChanged:
             self.coordMatrix[self.imageIndex, self.dotNum, 0:2] = event.Coords
             self.coordMatrix[self.imageIndex, self.dotNum, 2] = 0
-            self.removeDupes(self.coordMatrix[self.imageIndex,], event.Coords)
-            self.DisplayImage(Zoom=False)
 
-    def removeDupes(self, matrix, coords):
-        hasDupe = False
-        for arr in matrix:
-            if np.array_equal(arr[0:2], coords) and not hasDupe:
-                hasDupe = True
-            elif np.array_equal(arr[0:2], coords) and hasDupe:
-                arr = self.nullArray
+        # self.removeDupes(self.coordMatrix[self.imageIndex,], event.Coords)
+        self.DisplayImage(Zoom=False)
+
+    # def removeDupes(self, matrix, coords):
+    #    hasDupe = False
+    #    for i in range(len(matrix)):
+    #        if np.array_equal(matrix[i][0:2], coords) and not hasDupe:
+    #            hasDupe = True
+    #        elif np.array_equal(matrix[i][0:2], coords) and hasDupe:
+    #            matrix[i] = self.nullArray
+    #            self.Canvas._ForeDrawList[i].XY = self.nullArray[0:2]
 
     def CircleLeftDown(self, object):
         self.Canvas.UnBindAll()
         ind = self.removeArray(self.coordMatrix[self.imageIndex,], object.XY)
-        del self.Canvas._ForeDrawList[ind]
+        self.Canvas._ForeDrawList[ind].XY = np.array([-1.0, -1.0])
         self.Canvas.Bind(FloatCanvas.EVT_LEFT_UP, self.movingRelease)
+        # self.Canvas.Draw()
+
+    def CircleResize(self, object):
+        self.Canvas.UnBindAll()
+        self.Canvas.Bind(FloatCanvas.EVT_RIGHT_UP, self.sizeRelease)
+        self.preSizeCoords = object.XY
+        self.reSizingCircle = object
+
+    def sizeRelease(self, event):
+        self.EventsAreBound = False
+        self.BindAllMouseEvents()
+        self.diffCoords = event.Coords - self.preSizeCoords + self.reSizingCircle.WH
+        diff = (self.diffCoords[0] + self.diffCoords[1]) / 2
+        self.reSizingCircle.Diameter = diff
         self.Canvas.Draw()
 
-
     def movingRelease(self, event):
-        hasDot = False
-        for dot in self.coordMatrix[self.imageIndex,]:
-            if not np.array_equal(dot[0:2], self.nullArray) and np.array_equal(dot[0:2], event.Coords):
-                hasDot = True
-        if not hasDot:
-            self.AddCoords(event)
+        self.AddCoords(event)
         self.EventsAreBound = False
         self.BindAllMouseEvents()
 
