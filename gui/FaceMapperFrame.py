@@ -6,6 +6,7 @@ from collections import defaultdict, OrderedDict
 
 import numpy as np
 import wx
+import wx.lib.agw.cubecolourdialog as CCD
 from wx.lib.floatcanvas import NavCanvas, FloatCanvas
 
 # import DotSizeFrame
@@ -39,23 +40,26 @@ class FaceMapperFrame(wx.Frame):
         self.faceParts = OrderedDict()
         self.faceLabels = []
 
-        self.resetFaceParts()
+        self.firstColors = True
+        self.resetFaceParts(firstTime=True)
         self.resetFaceLabels()
 
         self.faceNums = OrderedDict()
         self.resetFaceNums()
 
         self.first_click = True
+
         self.dotNum = 0
         self.partCounter = 1
         self.totalDotNum = 0
         self.dotDiam = 1.1
+        self.colourData = wx.ColourData()
 
         for facePart in self.faceParts.keys():
             self.totalDotNum += self.faceParts[facePart][1]
 
-        self.nullArray = np.array([-1.0, -1.0, -1.0])
-        self.coordMatrix = np.zeros((len(self.image_names), self.totalDotNum, 3))
+        self.nullArray = np.array([-1.0, -1.0, -1.0, -1.0])
+        self.coordMatrix = np.zeros((len(self.image_names), self.totalDotNum, 4))
         self.coordMatrix.fill(-1.0)
 
         # ------------- Other Components ----------------
@@ -91,9 +95,7 @@ class FaceMapperFrame(wx.Frame):
         self.list = wx.ListBox(self, wx.NewId(), style=wx.LC_REPORT | wx.SUNKEN_BORDER,
                                choices=sorted(self.image_names))
         #self.list.Show(True)
-        self.currImag = wx.StaticText(self, wx.NewId(), label='Nothing Selected Yet')
         self.leftBox.Add(self.list)
-        self.leftBox.Add(self.currImag)
 
         # ----------------- Image Display ---------------
         NC = NavCanvas.NavCanvas(self, size=(500, 500), Debug=0, BackgroundColor="BLACK")
@@ -122,6 +124,7 @@ class FaceMapperFrame(wx.Frame):
 
         # -------------- Event Handling ----------------
         self.Bind(wx.EVT_LISTBOX, self.onSelect, id=self.list.GetId())
+        self.Bind(wx.EVT_LISTBOX, self.colorSelect, id=self.counterList.GetId())
         self.Bind(wx.EVT_BUTTON, self.onButtonSave, id=self.saveButton.GetId())
         self.EventsAreBound = False
         self.BindAllMouseEvents()
@@ -130,16 +133,23 @@ class FaceMapperFrame(wx.Frame):
         self.Bind(wx.EVT_MENU, self.onSaveAs, id=wx.ID_SAVEAS)
         #self.Bind(wx.EVT_MENU, self.changeDotSize, id=id_dotSize)
 
-
-
-    def resetFaceParts(self):
-        self.faceParts.clear()
-        self.faceParts["Left Eye"] = [0, 6]
-        self.faceParts["Right Eye"] = [0, 6]
-        self.faceParts["Mouth"] = [0, 20]
-        self.faceParts["Jaw"] = [0, 17]
-        self.faceParts["Eyebrows"] = [0, 10]
-        self.faceParts["Nose"] = [0, 9]
+    def resetFaceParts(self, firstTime):
+        if self.firstColors:
+            self.faceParts.clear()
+            # self.faceParts["Left Eye"] = [0, 6, 'Red']
+            self.faceParts["Left Eye"] = [0, 6, wx.TheColourDatabase.Find('Red').GetAsString()]
+            self.faceParts["Right Eye"] = [0, 6, wx.TheColourDatabase.Find('Orange').GetAsString()]
+            self.faceParts["Mouth"] = [0, 20, wx.TheColourDatabase.Find('Yellow').GetAsString()]
+            self.faceParts["Jaw"] = [0, 17, wx.TheColourDatabase.Find('Green').GetAsString()]
+            self.faceParts["Eyebrows"] = [0, 10, wx.TheColourDatabase.Find('Blue').GetAsString()]
+            self.faceParts["Nose"] = [0, 9, wx.TheColourDatabase.Find('Violet').GetAsString()]
+        else:
+            self.faceParts["Left Eye"] = [0, 6, self.faceParts["Left Eye"][2]]
+            self.faceParts["Right Eye"] = [0, 6, self.faceParts["Right Eye"][2]]
+            self.faceParts["Mouth"] = [0, 20, self.faceParts["Mouth"][2]]
+            self.faceParts["Jaw"] = [0, 17, self.faceParts["Jaw"][2]]
+            self.faceParts["Eyebrows"] = [0, 10, self.faceParts["Eyebrows"][2]]
+            self.faceParts["Nose"] = [0, 9, self.faceParts["Nose"][2]]
 
     def resetFaceLabels(self):
         self.faceLabels = []
@@ -160,7 +170,7 @@ class FaceMapperFrame(wx.Frame):
 
     def BindAllMouseEvents(self):
         if not self.EventsAreBound:
-            ## Here is how you catch FloatCanvas mouse events
+            self.Canvas.Unbind(FloatCanvas.EVT_MOTION)
             self.Canvas.Bind(FloatCanvas.EVT_LEFT_DOWN, self.OnLeftDown)
 
         self.EventsAreBound = True
@@ -203,7 +213,7 @@ class FaceMapperFrame(wx.Frame):
             print('You\'re Done!')
 
     def mirrorImage(self, event, shouldSave):
-        if self.image_names.index(self.image_name) >= 1 and np.array_equal(self.coordMatrix[self.imageIndex, 0,],
+        if self.imageIndex >= 1 and np.array_equal(self.coordMatrix[self.imageIndex, 0,],
                                                                            self.nullArray):
             self.coordMatrix[self.imageIndex,] = self.coordMatrix[self.imageIndex - 1,]
             for circle in self.coordMatrix[self.imageIndex,]:
@@ -213,8 +223,9 @@ class FaceMapperFrame(wx.Frame):
         filename = os.path.join(self.image_dir, self.image_name)
         self.current_image = wx.Image(filename)
 
-        if not self.prev_image_name:
-            self.first_click = True
+        # if not self.prev_image_name:
+        #    self.first_click = True
+        self.list.SetSelection(self.imageIndex)
         self.DisplayImage(Zoom=True)
         if shouldSave:
             self.onSave(event)
@@ -222,7 +233,7 @@ class FaceMapperFrame(wx.Frame):
 
     def save(self, path):
         ''' Save the coords to a csv file. '''
-        writer = csv.writer(open(path, 'wb'))
+        writer = csv.writer(open(path, 'w'))
 
         firstRow = [' ']
         for facePart in sorted(self.faceNums.keys()):
@@ -231,22 +242,39 @@ class FaceMapperFrame(wx.Frame):
                 firstRow.append('')
         writer.writerow(firstRow)
         for image in self.image_names:
-            row = [image]
-            for point in self.coordMatrix[self.image_names.index(image),]:
-                if not np.array_equal(self.nullArray, point):
-                    row.append(point[0])
-                    row.append(point[1])
-            writer.writerow(row)
+            if not np.array_equal(self.coordMatrix[self.image_names.index(image), 0,], self.nullArray):
+                row = [image]
+                for point in self.coordMatrix[self.image_names.index(image),]:
+                    if not np.array_equal(self.nullArray, point):
+                        row.append(point[0])
+                        row.append(point[1])
+                writer.writerow(row)
 
     def onSelect(self, event):
-        if self.image_name:
-            self.prev_image_name = self.image_name
-            if self.n_points != None and len(self.coords[self.image_name]) != self.n_points:
-                print("ERROR: incorrect number of points.")
+        # if self.image_name:
+        #    self.prev_image_name = self.image_name
+        #    if self.n_points != None and len(self.coords[self.image_name]) != self.n_points:
+        #        print("ERROR: incorrect number of points.")
 
         self.image_name = event.GetString()
         self.imageIndex = self.image_names.index(self.image_name)
+        for i in range(len(self.image_names)):
+            if i != self.imageIndex:
+                for circle in self.coordMatrix[i,]:
+                    if not np.array_equal(circle, self.nullArray):
+                        circle[2] = 0
         self.mirrorImage(event, shouldSave=False)
+
+    def colorSelect(self, event):
+        num = event.GetInt()
+        name = list(self.faceParts.keys())[num]
+        self.colourData.SetColour(self.faceParts[name][2])
+        colorDlg = CCD.CubeColourDialog(self, self.colourData)
+        if colorDlg.ShowModal() == wx.ID_OK:
+            self.firstColors = False
+            self.colourData = colorDlg.GetColourData()
+            self.faceParts[name][2] = self.colourData.GetColour().GetAsString()
+            self.DisplayImage(Zoom=False)
 
     def DisplayImage(self, Zoom):
         if Zoom:
@@ -255,21 +283,24 @@ class FaceMapperFrame(wx.Frame):
                 im = self.current_image.Copy()
                 self.Canvas.AddScaledBitmap(im.ConvertToBitmap(), (0, 0), Height=self.imHeight, Position="tl")
                 self.Canvas.ZoomToBB()
-                self.currImag.SetLabel('Current image is {0}'.format(self.image_name))
 
-        self.resetFaceParts()
+        self.resetFaceParts(firstTime=True)
         partCounter = 0
         for index, circle in enumerate(self.coordMatrix[self.imageIndex,]):
             if not (np.array_equal(circle, self.nullArray)) and circle[2] == 0:
+                if circle[3] == -1.0:
+                    circle[3] = self.dotDiam
+                diam = circle[3]
 
                 # T = FloatCanvas.ScaledText(XY=(circle[0] - .5, circle[1] - 1), Size=.5,
                 #                           String=list(self.faceNums.keys())[partCounter] +
                 #                                  str(self.faceNums[list(self.faceNums.keys())[partCounter]]),
                 #                           Color='Red', InForeground=True)
+
                 if index < len(self.Canvas._ForeDrawList):
                     self.Canvas._ForeDrawList[index].XY = circle[0:2]
                 else:
-                    C = FloatCanvas.Circle(XY=circle[0:2], Diameter=self.dotDiam, LineWidth=.5, LineColor='Red',
+                    C = FloatCanvas.Circle(XY=circle[0:2], Diameter=diam, LineWidth=.5, LineColor='Red',
                                            FillStyle='Transparent', InForeground=True)
 
                     C = self.Canvas.AddObject(C)
@@ -280,6 +311,7 @@ class FaceMapperFrame(wx.Frame):
             if not np.array_equal(circle.XY, self.nullArray[0:2]):
                 facePart = self.faceParts[list(self.faceParts.keys())[partCounter]]
                 facePart[0] += 1
+                circle.SetColor(facePart[2])
                 self.resetFaceNums()
                 if facePart[0] == facePart[1]:
                     partCounter += 1
@@ -329,20 +361,20 @@ class FaceMapperFrame(wx.Frame):
 
     def CircleLeftDown(self, object):
         self.draggingCircle = object
+        self.draggingCircleIndex = self.Canvas._ForeDrawList.index(self.draggingCircle)
         self.Canvas.UnBindAll()
-        ind = self.removeArray(self.coordMatrix[self.imageIndex,], object.XY)
-        self.Canvas._ForeDrawList[ind].XY = np.array([-1.0, -1.0])
-        # self.Canvas.Bind(FloatCanvas.EVT_MOTION, self.drag)
-        self.Canvas.Bind(FloatCanvas.EVT_LEFT_UP, self.movingRelease)
-        # self.Canvas.Draw()
+        self.Canvas.Bind(FloatCanvas.EVT_MOTION, self.drag)
+        self.Canvas.Draw()
 
-    # def drag(self, event):
-    #    if event.Dragging:
-    #        self.coordMatrix[self.imageIndex,self.coordMatrix[self.imageIndex,].tolist().index(self.draggingCircle),0:2] = event.Coords
-    #        self.draggingCircle.XY = event.Coords
-    #        self.Canvas.Draw()
-    #    else:
-    #        self.movingRelease(event)
+    def drag(self, event):
+        if wx.GetMouseState().LeftIsDown():
+            self.coordMatrix[self.imageIndex, self.draggingCircleIndex, 0:2] = event.Coords
+            self.Canvas._ForeDrawList[self.draggingCircleIndex].XY = event.Coords
+            self.Canvas.Draw()
+        else:
+            self.EventsAreBound = False
+            self.BindAllMouseEvents()
+
 
     def CircleResize(self, object):
         self.Canvas.UnBindAll()
@@ -358,10 +390,8 @@ class FaceMapperFrame(wx.Frame):
         self.reSizingCircle.Diameter = diff
         self.Canvas.Draw()
 
-    def movingRelease(self, event):
-        self.AddCoords(event)
-        self.EventsAreBound = False
-        self.BindAllMouseEvents()
+
+
 
 
     def onOpen(self, event):
