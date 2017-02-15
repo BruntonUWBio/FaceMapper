@@ -169,11 +169,9 @@ class FaceMapperFrame(wx.Frame):
             self.faceNums[abbr] = self.faceParts[facePart][0]
 
     def BindAllMouseEvents(self):
-        if not self.EventsAreBound:
-            self.Canvas.Unbind(FloatCanvas.EVT_MOTION)
-            self.Canvas.Bind(FloatCanvas.EVT_LEFT_DOWN, self.OnLeftDown)
+        self.Canvas.Unbind(FloatCanvas.EVT_MOTION)
+        self.Canvas.Bind(FloatCanvas.EVT_LEFT_DOWN, self.OnLeftDown)
 
-        self.EventsAreBound = True
 
     def openCSVFile(self, path):
 
@@ -299,6 +297,7 @@ class FaceMapperFrame(wx.Frame):
 
                 if index < len(self.Canvas._ForeDrawList):
                     self.Canvas._ForeDrawList[index].XY = circle[0:2]
+                    self.Canvas._ForeDrawList[index].SetDiameter(diam)
                 else:
                     C = FloatCanvas.Circle(XY=circle[0:2], Diameter=diam, LineWidth=.5, LineColor='Red',
                                            FillStyle='Transparent', InForeground=True)
@@ -362,7 +361,6 @@ class FaceMapperFrame(wx.Frame):
     def CircleLeftDown(self, object):
         self.draggingCircle = object
         self.draggingCircleIndex = self.Canvas._ForeDrawList.index(self.draggingCircle)
-        self.Canvas.UnBindAll()
         self.Canvas.Bind(FloatCanvas.EVT_MOTION, self.drag)
         self.Canvas.Draw()
 
@@ -372,25 +370,24 @@ class FaceMapperFrame(wx.Frame):
             self.Canvas._ForeDrawList[self.draggingCircleIndex].XY = event.Coords
             self.Canvas.Draw()
         else:
-            self.EventsAreBound = False
             self.BindAllMouseEvents()
 
 
     def CircleResize(self, object):
-        self.Canvas.UnBindAll()
-        self.Canvas.Bind(FloatCanvas.EVT_RIGHT_UP, self.sizeRelease)
         self.preSizeCoords = object.XY
         self.reSizingCircle = object
+        self.reSizingCircleIndex = self.Canvas._ForeDrawList.index(self.reSizingCircle)
+        self.Canvas.Bind(FloatCanvas.EVT_MOTION, self.resize)
 
-    def sizeRelease(self, event):
-        self.EventsAreBound = False
-        self.BindAllMouseEvents()
-        self.diffCoords = event.Coords - self.preSizeCoords + self.reSizingCircle.WH
-        diff = (self.diffCoords[0] + self.diffCoords[1]) / 2
-        self.reSizingCircle.Diameter = diff
-        self.Canvas.Draw()
-
-
+    def resize(self, event):
+        if wx.GetMouseState().RightIsDown():
+            self.diffCoords = event.Coords - self.preSizeCoords + self.reSizingCircle.WH
+            diff = (self.diffCoords[0] + self.diffCoords[1]) / 2
+            self.coordMatrix[self.imageIndex, self.reSizingCircleIndex, 3] = diff
+            self.reSizingCircle.SetDiameter(diff)
+            self.Canvas.Draw()
+        else:
+            self.BindAllMouseEvents()
 
 
 
