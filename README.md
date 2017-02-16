@@ -6,8 +6,6 @@ Click on one of the categories on the right to change a color
 
 Features in the future:
 
-- Resizing individual dots
-- Dot labeling
 - Changing number of dots
 - Sample image
 - Grouping and dragging
