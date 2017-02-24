@@ -1,3 +1,4 @@
+import colorsys
 import csv
 import glob
 import os
@@ -399,8 +400,8 @@ class FaceMapperFrame(wx.Frame):
         is_right_down = wx.GetMouseState().RightIsDown()
         curr_coords = event.Coords
         if is_right_down:
-            self.diffCoords = abs(curr_coords) - abs(self.pre_size_coords) + abs(self.resizing_circle.WH)
-            diff = (self.diffCoords[0] + self.diffCoords[1]) * .5
+            self.diffCoords = (abs(curr_coords) - abs(self.pre_size_coords)) * .25 + abs(self.resizing_circle.WH)
+            diff = (self.diffCoords[0] + self.diffCoords[1])
             self.coordMatrix[self.imageIndex, self.resizing_circle_index, 3] = diff
             self.resizing_circle.SetDiameter(diff)
             self.Canvas.Draw()
@@ -413,12 +414,20 @@ class FaceMapperFrame(wx.Frame):
         self.Canvas.Bind(FloatCanvas.EVT_MOUSEWHEEL, self.on_cmd_scroll)
         self.scrollingCircle = object
 
-    # Allows one to change the color of a circle set by scrolling
+    # Allows one to change the color of a circle set by pressing CTRL and scrolling
     def on_cmd_scroll(self, event):
         if self.pressedKeys[wx.WXK_CONTROL] == True:
             part = self.findFacePart(self.scrollingCircle)
             curr_color = self.faceParts[part][2]
-            print(curr_color)
+            hsv_color = colorsys.rgb_to_hsv(curr_color.Red(), curr_color.Green(), curr_color.Blue())
+            if event.GetWheelRotation() > 0:
+                delta = .1
+            else:
+                delta = -.1
+            new_color = colorsys.hsv_to_rgb(hsv_color[0] + delta, hsv_color[1], hsv_color[2])
+            self.colordb.AddColour(self.findFacePart(self.scrollingCircle),
+                                   wx.Colour(new_color[0], new_color[1], new_color[2], alpha=wx.ALPHA_OPAQUE))
+            self.DisplayImage(Zoom=False)
 
     def onKeyPress(self, event):
         self.pressedKeys[event.GetKeyCode()] = True
