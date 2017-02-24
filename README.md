@@ -1,8 +1,9 @@
 Use this tool to annotate a sequence of faces from a directory or video with dots
 
 Right-click and drag on a dot to change size<br />
-Click on one of the categories on the right to change a color
-Press CTRL while scrolling on a dot to change the color for all of the dots in that category
+Click on one of the categories on the right to change a color<br />
+Press CTRL while scrolling on a dot to change the color for all of the dots in that category <br />
+CTRL click and drag to select multiple dots, right click to remove selection <br />
 
 Features in the future:
 
