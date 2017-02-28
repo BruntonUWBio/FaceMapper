@@ -11,7 +11,7 @@ import wx.lib.agw.cubecolourdialog as ccd
 from wx.lib.floatcanvas import NavCanvas, FloatCanvas, GUIMode
 
 # Defines the list of image formats
-IMAGE_FORMATS = [".jpg", ".png", ".ppm", ".pgm", ".gif", ".tif", ".tiff", ]
+IMAGE_FORMATS = [".jpg", ".png", ".ppm", ".pgm", ".gif", ".tif", ".tiff", ".jpe"]
 
 
 class FaceMapperFrame(wx.Frame):
@@ -47,7 +47,7 @@ class FaceMapperFrame(wx.Frame):
 
         self.shownLabels = []
 
-        self.selections = []
+        self.selections = OrderedDict()
 
         # ---------- Colors ----
         self.colordb = wx.ColourDatabase()
@@ -95,12 +95,7 @@ class FaceMapperFrame(wx.Frame):
         self.CreateStatusBar()
         # ------------------- Menu ----------------------
         file_menu = wx.Menu()
-        # id_about = wx.NewId()
-        # id_open = wx.NewId()
-        # id_save = wx.NewId()
-        # id_save_as = wx.NewId()
-        # id_exit = wx.NewId()
-        # id_dotSize = wx.NewId()
+
         # File Menu
         file_menu.Append(wx.ID_ABOUT, wx.EmptyString)
         file_menu.AppendSeparator()
@@ -176,16 +171,6 @@ class FaceMapperFrame(wx.Frame):
 
     # Sets the face parts to their default values, with default colors
     def reset_face_parts(self):
-
-        # if self.firstColors:
-        #    self.faceParts.clear()
-        #    self.faceParts["Left Eye"] = [0, 6, self.colordb.Find("Left Eye")]
-        #    self.faceParts["Right Eye"] = [0, 6, self.colordb.]
-        #    self.faceParts["Mouth"] = [0, 20, wx.TheColourDatabase.Find('Yellow')]
-        #    self.faceParts["Jaw"] = [0, 17, wx.TheColourDatabase.Find('Green')]
-        #    self.faceParts["Eyebrows"] = [0, 10, wx.TheColourDatabase.Find('Blue')]
-        #    self.faceParts["Nose"] = [0, 9, wx.TheColourDatabase.Find('Violet')]
-        # else:
         self.faceParts["Left Eye"] = [0, 6, self.colordb.Find("Left Eye")]
         self.faceParts["Right Eye"] = [0, 6, self.colordb.Find("Right Eye")]
         self.faceParts["Mouth"] = [0, 20, self.colordb.Find("Mouth")]
@@ -213,10 +198,11 @@ class FaceMapperFrame(wx.Frame):
             for index in range(self.faceParts[facePart][1]):
                 self.faceNums.append(abbr + str(index + 1))
 
-    # Resets mouse events, only tracks left down
+    # Resets mouse events, only tracks left down, right down, and multiple select
     def BindAllMouseEvents(self):
-        self.Canvas.Bind(FloatCanvas.EVT_MOTION, self.multiSelect)
         self.Canvas.Unbind(FloatCanvas.EVT_MOUSEWHEEL)
+        self.Canvas.Unbind(FloatCanvas.EVT_LEFT_UP)
+        self.Canvas.Bind(FloatCanvas.EVT_MOTION, self.multiSelect)
         self.Canvas.Bind(FloatCanvas.EVT_LEFT_DOWN, self.on_left_down)
         self.Canvas.Bind(FloatCanvas.EVT_RIGHT_DOWN, self.clear_selections)
 
@@ -359,6 +345,7 @@ class FaceMapperFrame(wx.Frame):
             face_part = self.faceParts[list(self.faceParts.keys())[part_counter]]
             face_part[0] += 1
             circle.SetColor(face_part[2].GetAsString())
+            circle.SetLineStyle('Solid')
             if face_part[0] == face_part[1]:
                 part_counter += 1
             self.make_face_label(circle)
@@ -384,17 +371,32 @@ class FaceMapperFrame(wx.Frame):
     def circle_left_down(self, object):
         self.draggingCircle = object
         self.draggingCircleIndex = self.Canvas._ForeDrawList.index(self.draggingCircle)
+        self.pre_drag_coords = self.draggingCircle.XY
         self.Canvas.Bind(FloatCanvas.EVT_MOTION, self.drag)
         self.Canvas.Draw()
 
     # Redraws circle at location of mouse while dragging
     def drag(self, event):
-        if wx.GetMouseState().LeftIsDown():
-            self.coordMatrix[self.imageIndex, self.draggingCircleIndex, 0:2] = event.Coords
-            self.draggingCircle.XY = event.Coords
-            self.Canvas.Draw()
+        is_left_down = wx.GetMouseState().LeftIsDown()
+        if self.draggingCircle in self.selections:
+            if is_left_down:
+                for circle in self.selections:
+                    self.set_coords(circle, circle.XY + event.Coords - self.pre_drag_coords)
+                self.pre_drag_coords = event.Coords
+                self.Canvas.Draw()
+            else:
+                self.BindAllMouseEvents()
+
         else:
-            self.BindAllMouseEvents()
+            self.are_selecting_multiple = False
+            self.clear_selections(event=None)
+            if is_left_down:
+                self.set_coords(self.draggingCircle, event.Coords)
+                self.draggingCircle.SetLineStyle('Dot')
+                self.Canvas.Draw()
+            else:
+                self.draggingCircle.SetLineStyle('Solid')
+                self.BindAllMouseEvents()
 
     # Triggers when right-clicking a circle
     def circle_resize(self, object):
@@ -408,8 +410,8 @@ class FaceMapperFrame(wx.Frame):
         is_right_down = wx.GetMouseState().RightIsDown()
         curr_coords = event.Coords
         if is_right_down:
-            self.diffCoords = (abs(curr_coords) - abs(self.pre_size_coords)) * .25 + abs(self.resizing_circle.WH)
-            diff = (self.diffCoords[0] + self.diffCoords[1])
+            diffCoords = (abs(curr_coords) - abs(self.pre_size_coords)) * .25 + abs(self.resizing_circle.WH)
+            diff = (diffCoords[0] + diffCoords[1])
             self.coordMatrix[self.imageIndex, self.resizing_circle_index, 3] = diff
             self.resizing_circle.SetDiameter(diff)
             self.Canvas.Draw()
@@ -419,17 +421,18 @@ class FaceMapperFrame(wx.Frame):
     # Triggers when hovering over circle
     def circle_hover(self, object):
         if not self.are_selecting_multiple:
-            self.selections.clear()
-            self.selections.append(object)
-            self.displaySelections()
+            self.selectionText.SetLabel('Hovering Over ' + self.make_face_label(object))
             self.Canvas.Bind(FloatCanvas.EVT_MOUSEWHEEL, self.on_cmd_scroll)
             self.scrollingCircle = object
 
     def displaySelections(self):
-        selection_text = ('Current selections: ')
-        for selection in self.selections:
-            selection_text += self.faceNums[self.Canvas._ForeDrawList.index(selection)] + ", "
-        self.selectionText.SetLabel(selection_text)
+        if len(self.selections) >= 1:
+            selection_text = ('Current selections: ') + self.make_face_label(list(self.selections.keys())[0])
+            for i in range(1, len(self.selections.keys())):
+                selection_text += ', ' + self.make_face_label(list(self.selections.keys())[i])
+            self.selectionText.SetLabel(selection_text)
+        else:
+            self.selectionText.SetLabel('No Selections')
 
     # Allows one to change the color of a circle set by pressing CTRL and scrolling
     def on_cmd_scroll(self, event):
@@ -472,55 +475,54 @@ class FaceMapperFrame(wx.Frame):
                     FillColor='Gray',
                     FillStyle='Transparent'
                 ))
-            self.select_rectangle.Bind(FloatCanvas.EVT_FC_LEFT_DOWN, self.rect_left_down)
-            self.selections.clear()
+            self.Canvas.Draw()
+            self.Canvas.Bind(FloatCanvas.EVT_LEFT_UP, self.fin_select)
+
+    def fin_select(self, event):
+        # self.selections.clear()
+        if self.select_rectangle:
             for circle in self.Canvas._ForeDrawList:
                 if self.check_if_contained(circle):
-                    self.selections.append(circle)
-            self.displaySelections()
-            self.Canvas.Draw()
+                    self.selections[circle] = circle.XY
+                    circle.SetLineStyle('Dot')
+            self.Canvas.RemoveObject(self.select_rectangle, ResetBB=False)
+            self.select_rectangle = None
+        self.BindAllMouseEvents()
+        self.displaySelections()
+        self.Canvas.Draw()
 
     def check_if_contained(self, circle):
         c_x = abs(circle.XY[0])
         c_y = abs(circle.XY[1])
-        r_x = abs(self.select_rectangle.XY[0])
-        r_y = abs(self.select_rectangle.XY[1])
-        r_w = abs(self.select_rectangle.WH[0])
-        r_h = abs(self.select_rectangle.WH[1])
-
-        return c_x >= r_x and c_x <= r_x + r_w and c_y >= r_y and c_y <= r_y + r_h
-
-    def rect_left_down(self, object):
-        self.Canvas.Bind(FloatCanvas.EVT_MOTION, self.drag_multiple)
-        # self.pre_drag_coords = None
-
-    def drag_multiple(self, event):
-        mouse_coords = event.Coords
-        is_left_down = wx.GetMouseState().LeftIsDown()
-        if is_left_down:
-            if self.pre_drag_coords is None:
-                self.pre_drag_coords = mouse_coords
-            # self.select_rectangle.XY += mouse_coords - self.pre_drag_coords
-            self.select_rectangle.XY = event.Coords
-            self.Canvas.Draw()
+        if self.select_rectangle:
+            r_x = abs(self.select_rectangle.XY[0])
+            r_y = abs(self.select_rectangle.XY[1])
+            r_w = abs(self.select_rectangle.WH[0])
+            r_h = abs(self.select_rectangle.WH[1])
+            return c_x >= r_x and c_x <= r_x + r_w and c_y >= r_y and c_y <= r_y + r_h
         else:
-            self.BindAllMouseEvents()
+            return False
 
     def clear_selections(self, event):
-        if self.select_rectangle:
-            self.rectangleStart = None
-            self.Canvas.RemoveObject(self.select_rectangle)
-            self.select_rectangle = None
+        if event and event.EventType == 10232:
+            self.are_selecting_multiple = False
+        if self.are_selecting_multiple == False:
+            for circle in self.Canvas._ForeDrawList:
+                circle.SetLineStyle('Solid')
+            if self.select_rectangle:
+                self.rectangleStart = None
+                self.Canvas.RemoveObject(self.select_rectangle)
+                self.select_rectangle = None
             self.selections.clear()
             self.displaySelections()
-        self.Canvas.Draw()
+            self.Canvas.Draw()
 
     # Resets selection text
     def selection_reset(self, object):
         is_left_down = wx.GetMouseState().LeftIsDown()
         is_right_down = wx.GetMouseState().RightIsDown()
-        self.are_selecting_multiple = False
-        if not is_right_down and not is_left_down:
+        if not (is_right_down or is_left_down or self.are_selecting_multiple):
+            self.are_selecting_multiple = False
             self.BindAllMouseEvents()
             self.selections.clear()
             self.selectionText.SetLabel('No Selections')
@@ -612,6 +614,12 @@ class FaceMapperFrame(wx.Frame):
                 circ_index -= self.faceParts[part][1]
             else:
                 return part
+
+    def set_coords(self, circle, XY):
+        circle.XY = XY
+        index = self.Canvas._ForeDrawList.index(circle)
+        self.coordMatrix[self.imageIndex, index, 0:2] = XY
+
 
 class SelectorMode(GUIMode.GUIBase):
     def __init__(self):
