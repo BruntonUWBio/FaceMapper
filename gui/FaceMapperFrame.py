@@ -85,7 +85,6 @@ class FaceMapperFrame(wx.Frame):
             'y',
             'drawn',
             'diameter',
-            'visible',
         ]
 
         self.nullArray = np.array([-1.0, -1.0, -1.0, -1.0])
@@ -130,9 +129,16 @@ class FaceMapperFrame(wx.Frame):
         self.counterList = wx.ListBox(self, wx.NewId(), style=wx.LC_REPORT | wx.SUNKEN_BORDER | wx.LB_SORT,
                                       name='Click on a category to change its color',
                                       choices=self.faceLabels)
+        self.sample_image_canvas = FloatCanvas.FloatCanvas(self, Debug=0, BackgroundColor="Black")
+        self.sampleImage = wx.Image('sample_face.PNG', wx.BITMAP_TYPE_ANY)
+        self.sampleImage = self.sampleImage.Scale((self.sampleImage.GetWidth() / 1.5),
+                                                  (self.sampleImage.GetHeight() / 1.5))
+        self.sample_image_bitmap = wx.StaticBitmap(self, wx.NewId(), self.sampleImage.ConvertToBitmap())
+        # self.sample_image_canvas.AddBitmap(self.sample_image_bitmap, (0,0))
         self.saveButton = wx.Button(self, wx.NewId(), label='Press to Save and Continue')
         self.labelButton = wx.Button(self, wx.NewId(), label='Show Labels')
         self.counterBox.Add(self.counterList, 1, wx.EXPAND)
+        self.counterBox.Add(self.sample_image_bitmap, 3, wx.EXPAND)
         self.counterBox.Add(self.labelButton, .5, wx.EXPAND)
         self.counterBox.Add(self.saveButton, .5, wx.EXPAND)
 
@@ -324,6 +330,8 @@ class FaceMapperFrame(wx.Frame):
         part_counter = 0
         for index, circle in enumerate(self.coordMatrix[self.imageIndex,]):
             if not (np.array_equal(circle, self.nullArray)) and circle[2] == 0:
+                if index >= 1:
+                    self.dotDiam = self.coordMatrix[self.imageIndex, index - 1, 3]
                 if circle[3] == -1.0:
                     circle[3] = self.dotDiam
                 diam = circle[3]
@@ -459,10 +467,11 @@ class FaceMapperFrame(wx.Frame):
     def multiSelect(self, event):
         is_left_down = wx.GetMouseState().LeftIsDown()
         if self.pressedKeys[wx.WXK_CONTROL] and is_left_down:
+            if not self.rectangleStart:
+                self.rectangleStart = event.Coords
             if not self.are_selecting_multiple:
                 self.are_selecting_multiple = True
                 self.rectangleStart = event.Coords
-
             if self.select_rectangle:
                 self.Canvas.RemoveObject(self.select_rectangle, ResetBB=False)
                 self.select_rectangle = None
@@ -488,6 +497,7 @@ class FaceMapperFrame(wx.Frame):
                     circle.SetLineStyle('Dot')
             self.Canvas.RemoveObject(self.select_rectangle, ResetBB=False)
             self.select_rectangle = None
+            self.rectangleStart = None
         self.bind_all_mouse_events()
         self.displaySelections()
         self.Canvas.Draw()
