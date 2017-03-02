@@ -1,13 +1,12 @@
 import colorsys
 import csv
 import glob
+import numpy as np
 import os
 import os.path
-from collections import defaultdict, OrderedDict
-
-import numpy as np
 import wx
 import wx.lib.agw.cubecolourdialog as ccd
+from collections import defaultdict, OrderedDict
 from wx.lib.floatcanvas import NavCanvas, FloatCanvas, GUIMode
 
 # Defines the list of image formats
@@ -21,8 +20,11 @@ class FaceMapperFrame(wx.Frame):
         if is_video:
             output_dlg = wx.DirDialog(None, message='Please select an output directory', defaultPath=image_dir)
             if output_dlg.ShowModal() == wx.ID_OK:
-                self.image_dir = output_dlg.GetPath()
-                os.system("ffmpeg -i {0} -vf fps=1/5 {1}".format(image_dir, self.image_dir + '/out%02d.png'))
+                frames_dlg = wx.TextEntryDialog(None, message='Please select frames per second', value='5')
+                if frames_dlg.ShowModal() == wx.ID_OK:
+                    self.image_dir = output_dlg.GetPath()
+                    os.system("ffmpeg -i {0} -vf fps=1/{1} {2}".format(image_dir, frames_dlg.GetValue(),
+                                                                       self.image_dir + '/out%02d.png'))
 
         # ---------------- Basic Data -------------------
         else:
@@ -68,7 +70,6 @@ class FaceMapperFrame(wx.Frame):
         self.are_selecting_multiple = False
         self.select_rectangle = None
         self.pre_drag_coords = None
-
 
         self.dotNum = 0
         self.partCounter = 1
@@ -156,7 +157,7 @@ class FaceMapperFrame(wx.Frame):
         self.Bind(wx.EVT_LISTBOX, self.color_select, id=self.counterList.GetId())
         self.Bind(wx.EVT_BUTTON, self.onbuttonsave, id=self.saveButton.GetId())
         self.Bind(wx.EVT_BUTTON, self.show_labels, id=self.labelButton.GetId())
-        self.BindAllMouseEvents()
+        self.bind_all_mouse_events()
         self.Bind(wx.EVT_MENU, self.on_open, id=wx.ID_OPEN)
         self.Bind(wx.EVT_MENU, self.on_save, id=wx.ID_SAVE)
         self.Bind(wx.EVT_MENU, self.on_save_as, id=wx.ID_SAVEAS)
@@ -199,7 +200,7 @@ class FaceMapperFrame(wx.Frame):
                 self.faceNums.append(abbr + str(index + 1))
 
     # Resets mouse events, only tracks left down, right down, and multiple select
-    def BindAllMouseEvents(self):
+    def bind_all_mouse_events(self):
         self.Canvas.Unbind(FloatCanvas.EVT_MOUSEWHEEL)
         self.Canvas.Unbind(FloatCanvas.EVT_LEFT_UP)
         self.Canvas.Bind(FloatCanvas.EVT_MOTION, self.multiSelect)
@@ -207,7 +208,7 @@ class FaceMapperFrame(wx.Frame):
         self.Canvas.Bind(FloatCanvas.EVT_RIGHT_DOWN, self.clear_selections)
 
     # Sets coordinates based on CSV
-    def openCSVFile(self, path):
+    def open_csv_file(self, path):
 
         reader = csv.reader(open(path, "rb"))
         first = True
@@ -241,12 +242,12 @@ class FaceMapperFrame(wx.Frame):
 
             self.image_name = self.image_names[i + 1]
             self.imageIndex = self.image_names.index(self.image_name)
-            self.mirrorim(event, shouldsave=True)
+            self.mirror_im(event, should_save=True)
         else:
             print('You\'re Done!')
 
     # Mirrors coordinates from previous image, if previous image exists
-    def mirrorim(self, event, shouldsave):
+    def mirror_im(self, event, should_save):
         if self.imageIndex >= 1 and np.array_equal(self.coordMatrix[self.imageIndex, 0,],
                                                    self.nullArray):
             self.coordMatrix[self.imageIndex,] = self.coordMatrix[self.imageIndex - 1,]
@@ -262,7 +263,7 @@ class FaceMapperFrame(wx.Frame):
         self.list.SetSelection(self.imageIndex)
         self.remove_labels()
         self.DisplayImage(Zoom=True)
-        if shouldsave:
+        if should_save:
             self.on_save(event)
 
     # Save coordiantes to a csv file
@@ -292,7 +293,7 @@ class FaceMapperFrame(wx.Frame):
                 for circle in self.coordMatrix[i,]:
                     if not np.array_equal(circle, self.nullArray):
                         circle[2] = 0
-        self.mirrorim(event, shouldsave=False)
+        self.mirror_im(event, should_save=False)
 
     # Triggers on selecting a face part
     def color_select(self, event):
@@ -385,7 +386,7 @@ class FaceMapperFrame(wx.Frame):
                 self.pre_drag_coords = event.Coords
                 self.Canvas.Draw()
             else:
-                self.BindAllMouseEvents()
+                self.bind_all_mouse_events()
 
         else:
             self.are_selecting_multiple = False
@@ -396,7 +397,7 @@ class FaceMapperFrame(wx.Frame):
                 self.Canvas.Draw()
             else:
                 self.draggingCircle.SetLineStyle('Solid')
-                self.BindAllMouseEvents()
+                self.bind_all_mouse_events()
 
     # Triggers when right-clicking a circle
     def circle_resize(self, object):
@@ -416,12 +417,12 @@ class FaceMapperFrame(wx.Frame):
             self.resizing_circle.SetDiameter(diff)
             self.Canvas.Draw()
         else:
-            self.BindAllMouseEvents()
+            self.bind_all_mouse_events()
 
     # Triggers when hovering over circle
     def circle_hover(self, object):
         if not self.are_selecting_multiple:
-            self.selectionText.SetLabel('Hovering Over ' + self.make_face_label(object))
+            self.selectionText.SetLabel('Hovering Over ' + str(self.make_face_label(object)))
             self.Canvas.Bind(FloatCanvas.EVT_MOUSEWHEEL, self.on_cmd_scroll)
             self.scrollingCircle = object
 
@@ -469,11 +470,11 @@ class FaceMapperFrame(wx.Frame):
                 self.Canvas.AddObject(FloatCanvas.Rectangle(
                     XY=self.rectangleStart,
                     WH=event.Coords - self.rectangleStart,
-                    LineColor='Red',
+                    LineColor='Purple',
                     LineStyle='Dot',
                     LineWidth=1,
-                    FillColor='Gray',
-                    FillStyle='Transparent'
+                    FillColor='Gold',
+                    FillStyle='BiDiagonalHatch'
                 ))
             self.Canvas.Draw()
             self.Canvas.Bind(FloatCanvas.EVT_LEFT_UP, self.fin_select)
@@ -487,19 +488,21 @@ class FaceMapperFrame(wx.Frame):
                     circle.SetLineStyle('Dot')
             self.Canvas.RemoveObject(self.select_rectangle, ResetBB=False)
             self.select_rectangle = None
-        self.BindAllMouseEvents()
+        self.bind_all_mouse_events()
         self.displaySelections()
         self.Canvas.Draw()
 
     def check_if_contained(self, circle):
-        c_x = abs(circle.XY[0])
-        c_y = abs(circle.XY[1])
+        c_x, c_y = self.Canvas.PixelToWorld(circle.XY)
         if self.select_rectangle:
-            r_x = abs(self.select_rectangle.XY[0])
-            r_y = abs(self.select_rectangle.XY[1])
-            r_w = abs(self.select_rectangle.WH[0])
-            r_h = abs(self.select_rectangle.WH[1])
-            return c_x >= r_x and c_x <= r_x + r_w and c_y >= r_y and c_y <= r_y + r_h
+            r_x, r_y = self.Canvas.PixelToWorld(self.select_rectangle.XY)
+            r_x2, r_y2 = self.Canvas.PixelToWorld(self.select_rectangle.XY + self.select_rectangle.WH)
+            if self.select_rectangle:
+                if r_x2 < r_x:
+                    r_x2, r_x = r_x, r_x2
+                if r_y2 < r_y:
+                    r_y2, r_y = r_y, r_y2
+            return c_x >= r_x and c_x <= r_x2 and c_y >= r_y and c_y <= r_y2
         else:
             return False
 
@@ -523,7 +526,7 @@ class FaceMapperFrame(wx.Frame):
         is_right_down = wx.GetMouseState().RightIsDown()
         if not (is_right_down or is_left_down or self.are_selecting_multiple):
             self.are_selecting_multiple = False
-            self.BindAllMouseEvents()
+            self.bind_all_mouse_events()
             self.selections.clear()
             self.selectionText.SetLabel('No Selections')
 
@@ -551,7 +554,7 @@ class FaceMapperFrame(wx.Frame):
         self.filename = fd.GetPath()
         print("On Open...", self.filename)
 
-        self.openCSVFile(self.filename)
+        self.open_csv_file(self.filename)
 
     # Triggers on save action
     def on_save(self, event):
@@ -599,7 +602,7 @@ class FaceMapperFrame(wx.Frame):
     # Returns face number for a given circle
     def make_face_label(self, circle):
         if not np.array_equal(circle.XY, self.nullArray[0:2]):
-            return self.faceNums[self.Canvas._ForeDrawList.index(circle)]
+            return str(self.faceNums[self.Canvas._ForeDrawList.index(circle)])
 
     def remove_labels(self):
         self.Canvas.RemoveObjects(self.shownLabels)
@@ -644,7 +647,8 @@ if __name__ == '__main__':
             print("Image Dir", image_dir)
             scale = 1.0
 
-            frame = FaceMapperFrame(None, wx.ID_ANY, "FaceMapper", image_dir, n_points=None, scale=scale, is_video=False)
+            frame = FaceMapperFrame(None, wx.ID_ANY, "FaceMapper", image_dir,
+                                    n_points=None, scale=scale, is_video=False)
         else:
             file_dialog = wx.FileDialog(None, message="Please select a video file.")
             err = file_dialog.ShowModal()
