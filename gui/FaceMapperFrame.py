@@ -1,11 +1,11 @@
 import colorsys
 import csv
 import glob
+import math
 import os
 import os.path
 
 import cv2
-import math
 import numpy as np
 import wx
 import wx.lib.agw.cubecolourdialog as ccd
@@ -482,6 +482,7 @@ class FaceMapperFrame(wx.Frame):
             self.resizing_circle.SetDiameter(diff)
             self.pre_size_coords = event.Coords
             self.Canvas.Draw()
+
         else:
             self.bind_all_mouse_events()
 
@@ -579,11 +580,7 @@ class FaceMapperFrame(wx.Frame):
             self.pre_rotate_mouse_coords = event.Coords
             self.pre_rotate_coords = []
             for circle in self.selections:
-                minX = self.faceBB[0][0]
-                maxX = self.faceBB[1][0]
-                minY = self.faceBB[0][1]
-                maxY = self.faceBB[1][1]
-                self.half = np.array([self.faceBB[1][0] + self.faceBB[0][0], self.faceBB[1][1] + self.faceBB[0][1]]) / 2
+                self.half = self.find_bb_half(self.faceBB)
                 self.pre_rotate_coords.append(circle.XY - self.half)
             self.Canvas.Bind(FloatCanvas.EVT_MOTION, self.rotate)
         else:  # clears selections
@@ -605,12 +602,14 @@ class FaceMapperFrame(wx.Frame):
         if is_right_down:
             for index, circle in enumerate(self.selections):
                 diff_coords = event.Coords - self.pre_rotate_mouse_coords
-                diff_coord_average = diff_coords[1] / 100
-                rotation_matrix = np.array([[math.cos(diff_coord_average), -math.sin(diff_coord_average)],
-                                            [math.sin(diff_coord_average), math.cos(diff_coord_average)]])
+                diff_coord_x = diff_coords[0] / 100
+                diff_coord_y = diff_coords[1] / 100
                 coord_matrix = np.array([[self.pre_rotate_coords[index][0]], [self.pre_rotate_coords[index][1]]])
-                self.new_coords = np.dot(rotation_matrix, coord_matrix)
-                self.set_coords(circle, np.array([self.new_coords[0, 0], self.new_coords[1, 0]]) + self.half)
+                new_coords = self.rotate_mat(diff_coord_y, coord_matrix)
+                self.set_coords(circle, np.array([new_coords[0, 0] +
+                                                  diff_coord_x * self.pre_rotate_coords[index][0],
+                                                  new_coords[1, 0] + diff_coord_x *
+                                                  self.pre_rotate_coords[index][1]]) + self.half)
         else:
             self.bind_all_mouse_events()
     # Resets selection text
@@ -626,14 +625,43 @@ class FaceMapperFrame(wx.Frame):
     # Shows face numbers for each circle
     def show_labels(self, event):
         if len(self.shownLabels) == 0:
-            for index, circle in enumerate(self.Canvas._ForeDrawList):
-                if not np.array_equal(circle, self.nullArray):
-                    t = FloatCanvas.ScaledText(String=self.faceNums[index],
-                                               XY=(circle.XY[0] - circle.WH[0], circle.XY[1] - circle.WH[1]),
-                                               Size=circle.WH[0] * .85,
-                                               Color=circle.LineColor)
-                    t = self.Canvas.AddObject(t)
-                    self.shownLabels.append(t)
+            #     for index, circle in enumerate(self.Canvas._ForeDrawList):
+            #         if not np.array_equal(circle, self.nullArray):
+            #
+            #             t = self.Canvas.AddObject(t)
+            #             self.shownLabels.append(t)
+            #     self.Canvas.Draw()
+            i = 0
+            for facePart in list(self.faceParts.keys()):
+                face_part_bb = None
+                face_part_circles = []
+                if 0 + i < len(self.Canvas._ForeDrawList):
+                    for j in range(0 + i, self.faceParts[facePart][1] + i):
+                        if j < len(self.Canvas._ForeDrawList):
+                            face_part_circles.append(self.Canvas._ForeDrawList[j])
+                    face_part_bb = Utilities.BBox.fromPoints([circle.XY for circle in face_part_circles])
+                    face_part_bb_center = self.find_bb_half(face_part_bb)
+                    for j in range(0 + i, self.faceParts[facePart][1] + i):
+                        if j < len(self.Canvas._ForeDrawList):
+                            circle = self.Canvas._ForeDrawList[j]
+                            coord_diff = circle.XY - face_part_bb_center
+                            mag_coord_diff = np.sqrt(np.square(coord_diff[0]) + np.square(coord_diff[1]))
+                            unit_coord_diff = np.array(
+                                [np.divide(coord_diff[0], mag_coord_diff), np.divide(coord_diff[1], mag_coord_diff)])
+                            theta = math.atan(np.divide(unit_coord_diff[1], unit_coord_diff[0]))
+                            if unit_coord_diff[0] < 0 and unit_coord_diff[1] > 0:
+                                theta += math.pi / 2
+                            elif unit_coord_diff[0] < 0 and unit_coord_diff[1] < 0:
+                                theta += math.pi
+                            elif unit_coord_diff[0] > 0 and unit_coord_diff[1] < 0:
+                                theta += 1.5 * math.pi
+                            WH_in_dir_of_diff = self.rotate_mat(theta, 2 * circle.WH.transpose())
+                            t = FloatCanvas.ScaledText(String=self.faceNums[j],
+                                                       XY=(circle.XY + WH_in_dir_of_diff.transpose()),
+                                                       Size=circle.WH[0] * .85, Color=circle.LineColor)
+                            t = self.Canvas.AddObject(t)
+                            self.shownLabels.append(t)
+                i += self.faceParts[facePart][1]
             self.Canvas.Draw()
             self.labelButton.SetLabel('Hide Labels')
         else:
@@ -717,7 +745,17 @@ class FaceMapperFrame(wx.Frame):
         self.coordMatrix[self.imageIndex, index, 0:2] = x_y
         self.Canvas.Draw()
 
+    def find_bb_half(self, BBox):
+        minX = BBox[0][0]
+        maxX = BBox[1][0]
+        minY = BBox[0][1]
+        maxY = BBox[1][1]
+        return np.array([maxX + minX, maxY + minY]) / 2
 
+    def rotate_mat(self, theta, mat):
+        rotation_matrix = np.array([[math.cos(theta), -math.sin(theta)],
+                                    [math.sin(theta), math.cos(theta)]])
+        return np.dot(rotation_matrix, mat)
 class SelectorMode(GUIMode.GUIBase):
     def __init__(self):
         GUIMode.GUIBase.__init__(self)

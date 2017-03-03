@@ -12,7 +12,6 @@ Requires:
 
 Features in the future:
 
-- Smart label positioning
 - Changing number of dots
 - Hotkeys for visible, not visible
 - Emotion selector
