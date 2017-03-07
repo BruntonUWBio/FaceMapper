@@ -4,12 +4,12 @@ import glob
 import math
 import os
 import os.path
+from collections import defaultdict, OrderedDict
 
 import cv2
 import numpy as np
 import wx
 import wx.lib.agw.cubecolourdialog as ccd
-from collections import defaultdict, OrderedDict
 from skimage.measure import compare_ssim as ssim
 from wx.lib.floatcanvas import NavCanvas, FloatCanvas, GUIMode, Utilities
 
@@ -449,6 +449,7 @@ class FaceMapperFrame(wx.Frame):
             if is_left_down:
                 for circle in self.selections:
                     self.set_coords(circle, circle.XY + event.Coords - self.pre_drag_coords)
+                self.Canvas.Draw()
                 self.pre_drag_coords = event.Coords
             else:
                 self.bind_all_mouse_events()
@@ -610,6 +611,7 @@ class FaceMapperFrame(wx.Frame):
                                                   diff_coord_x * self.pre_rotate_coords[index][0],
                                                   new_coords[1, 0] + diff_coord_x *
                                                   self.pre_rotate_coords[index][1]]) + self.half)
+            self.Canvas.Draw()
         else:
             self.bind_all_mouse_events()
     # Resets selection text
@@ -743,7 +745,6 @@ class FaceMapperFrame(wx.Frame):
         circle.XY = x_y
         index = self.Canvas._ForeDrawList.index(circle)
         self.coordMatrix[self.imageIndex, index, 0:2] = x_y
-        self.Canvas.Draw()
 
     def find_bb_half(self, BBox):
         minX = BBox[0][0]
