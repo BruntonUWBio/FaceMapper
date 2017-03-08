@@ -1,15 +1,14 @@
 import colorsys
 import csv
+import cv2
 import glob
 import math
+import numpy as np
 import os
 import os.path
-from collections import defaultdict, OrderedDict
-
-import cv2
-import numpy as np
 import wx
 import wx.lib.agw.cubecolourdialog as ccd
+from collections import defaultdict, OrderedDict
 from skimage.measure import compare_ssim as ssim
 from wx.lib.floatcanvas import NavCanvas, FloatCanvas, GUIMode, Utilities
 
@@ -19,13 +18,15 @@ IMAGE_FORMATS = [".jpg", ".png", ".ppm", ".pgm", ".gif", ".tif", ".tiff", ".jpe"
 class FaceMapperFrame(wx.Frame):
     def __init__(self, parent, id, name, image_dir, n_points=None, scale=1.0, is_video=False):
         wx.Frame.__init__(self, parent, id, name)
+        self.smart_dlg = None
         if not is_video:
             smart_or_dumb_dlg = wx.SingleChoiceDialog(None, message='Please select a frames method',
                                                       caption='Frame Method',
                                                       choices=['Smart Frame Analysis',
                                                                'Manual frame-by-frame'])
             if smart_or_dumb_dlg.ShowModal() == wx.ID_OK:
-                self.smart_dlg = True
+                if smart_or_dumb_dlg.GetSelection() == 0:
+                    self.smart_dlg = True
 
         if is_video:
             output_dlg = wx.DirDialog(None, message='Please select an output directory', defaultPath=image_dir)
@@ -40,11 +41,12 @@ class FaceMapperFrame(wx.Frame):
                         frames_dlg = wx.TextEntryDialog(None, message='Please select frames per second', value='5')
                         if frames_dlg.ShowModal() == wx.ID_OK:
                             os.system('ffmpeg -i "{0}" -vf fps=1/{1} "{2}"'.format(image_dir, frames_dlg.GetValue(),
-                                                                                   self.image_dir + '/out%03d.png'))
+                                                                                   self.image_dir + '/' + image_dir
+                                                                                   + '_out%03d.png'))
                     else:
                         self.smart_dlg = True
-                        os.system('ffmpeg -i "{0}" -vf fps=1/{1} "{2}"'.format(image_dir, str(1), self.image_dir +
-                                                                               '/out%03d.png'))
+                        os.system('ffmpeg -i "{0}" -vf fps=1/{1} "{2}"'.format(image_dir, str(1), self.image_dir + '/'
+                                                                               + image_dir + '_out%03d.png'))
         # ---------------- Basic Data -------------------
         else:
             self.image_dir = image_dir
@@ -86,6 +88,8 @@ class FaceMapperFrame(wx.Frame):
         self.color_db.AddColour("Eyebrows", wx.TheColourDatabase.Find('Blue'))
         self.color_db.AddColour("Nose", wx.TheColourDatabase.Find('Violet'))
 
+        self.face_part_values = OrderedDict()
+        self.reset_face_part_values()
         self.reset_face_parts()
         self.reset_face_labels()
 
@@ -105,9 +109,9 @@ class FaceMapperFrame(wx.Frame):
         self.pre_drag_coords = None
 
         self.dotNum = 0
-        self.partCounter = 1
         self.totalDotNum = 0
         self.dotDiam = 1.1
+        self.part_counter = 0
         self.colourData = wx.ColourData()
 
         for facePart in self.faceParts.keys():
@@ -118,6 +122,7 @@ class FaceMapperFrame(wx.Frame):
             'y',
             'drawn',
             'diameter',
+
         ]
 
         self.nullArray = np.array([-1.0, -1.0, -1.0, -1.0])
@@ -168,10 +173,25 @@ class FaceMapperFrame(wx.Frame):
                                                   (self.sampleImage.GetHeight() / 1.5))
         self.sample_image_bitmap = wx.StaticBitmap(self, wx.NewId(), self.sampleImage.ConvertToBitmap())
         # self.sample_image_canvas.AddBitmap(self.sample_image_bitmap, (0,0))
+        self.nextButton = wx.Button(self, wx.NewId(), label='Press to move to Next Part')
+
+        self.emotion_choices = [
+            'Happy',
+            'Sad',
+            'Sleeping',
+            'Angry',
+            'Áfraid',
+            'Disgusted'
+        ]
+
+        self.emotionList = wx.ListBox(self, wx.NewId(), style=wx.LB_MULTIPLE, choices=self.emotion_choices)
+
         self.saveButton = wx.Button(self, wx.NewId(), label='Press to Save and Continue')
         self.labelButton = wx.Button(self, wx.NewId(), label='Show Labels')
         self.counterBox.Add(self.counterList, 1, wx.EXPAND)
-        self.counterBox.Add(self.sample_image_bitmap, 3, wx.EXPAND)
+        self.counterBox.Add(self.sample_image_bitmap, 4, wx.EXPAND)
+        self.counterBox.Add(self.nextButton, .5, wx.EXPAND)
+        self.counterBox.Add(self.emotionList, 1, wx.EXPAND)
         self.counterBox.Add(self.labelButton, .5, wx.EXPAND)
         self.counterBox.Add(self.saveButton, .5, wx.EXPAND)
 
@@ -196,6 +216,7 @@ class FaceMapperFrame(wx.Frame):
         self.Bind(wx.EVT_LISTBOX, self.color_select, id=self.counterList.GetId())
         self.Bind(wx.EVT_BUTTON, self.on_button_save, id=self.saveButton.GetId())
         self.Bind(wx.EVT_BUTTON, self.show_labels, id=self.labelButton.GetId())
+        self.Bind(wx.EVT_BUTTON, self.next_part, id=self.nextButton.GetId())
         self.bind_all_mouse_events()
         self.Bind(wx.EVT_MENU, self.on_open, id=wx.ID_OPEN)
         self.Bind(wx.EVT_MENU, self.on_save, id=wx.ID_SAVE)
@@ -206,17 +227,41 @@ class FaceMapperFrame(wx.Frame):
 
         # --------- Hotkeys -----
         self.pressedKeys = {
-            wx.WXK_CONTROL: False
+            wx.WXK_CONTROL: False,
+            wx.WXK_DELETE: False
         }
+
+        self.defaultfaceNums = []
+        for facePart in self.faceParts.keys():
+            split = facePart.split()
+            abbr = ''
+            for i in range(len(split)):
+                abbr += split[i].strip()[0]
+            for index in range(self.faceParts[facePart][1]):
+                self.defaultfaceNums.append(abbr + str(index + 1))
+
+    def reset_face_part_values(self):
+        self.face_part_values.clear()
+        self.face_part_values["Left Eye"] = 6
+        self.face_part_values["Right Eye"] = 6
+        self.face_part_values["Mouth"] = 20
+        self.face_part_values["Jaw"] = 17
+        self.face_part_values["Eyebrows"] = 10
+        self.face_part_values["Nose"] = 9
+
 
     # Sets the face parts to their default values, with default colors
     def reset_face_parts(self):
-        self.faceParts["Left Eye"] = [0, 6, self.color_db.Find("Left Eye")]
-        self.faceParts["Right Eye"] = [0, 6, self.color_db.Find("Right Eye")]
-        self.faceParts["Mouth"] = [0, 20, self.color_db.Find("Mouth")]
-        self.faceParts["Jaw"] = [0, 17, self.color_db.Find("Jaw")]
-        self.faceParts["Eyebrows"] = [0, 10, self.color_db.Find("Eyebrows")]
-        self.faceParts["Nose"] = [0, 9, self.color_db.Find("Nose")]
+        self.faceParts.clear()
+        for facePart in list(self.face_part_values.keys()):
+            self.faceParts[facePart] = [0, int(self.face_part_values[facePart]), self.color_db.Find(facePart)]
+
+            # self.faceParts["Left Eye"] = [0, 6, self.color_db.Find("Left Eye")]
+            # self.faceParts["Right Eye"] = [0, 6, self.color_db.Find("Right Eye")]
+            # self.faceParts["Mouth"] = [0, 20, self.color_db.Find("Mouth")]
+            # self.faceParts["Jaw"] = [0, 17, self.color_db.Find("Jaw")]
+            # self.faceParts["Eyebrows"] = [0, 10, self.color_db.Find("Eyebrows")]
+            # self.faceParts["Nose"] = [0, 9, self.color_db.Find("Nose")]
 
     # Makes face labels based on the face parts
     def reset_face_labels(self):
@@ -294,10 +339,8 @@ class FaceMapperFrame(wx.Frame):
 
         filename = os.path.join(self.image_dir, self.image_name)
         self.current_image = wx.Image(filename)
-
         self.list.SetSelection(self.imageIndex)
         self.remove_labels()
-
         self.display_image(zoom=True)
 
         if self.smart_dlg and check_ssim_if_smart:
@@ -329,18 +372,27 @@ class FaceMapperFrame(wx.Frame):
     def save(self, path):
         writer = csv.writer(open(path, 'w'))
 
-        first_row = [' ']
-        for faceNum in self.faceNums:
+        first_row = [' ', ' ']
+        for faceNum in self.defaultfaceNums:
             first_row.append(faceNum)
+            first_row.append('')
         writer.writerow(first_row)
         for image in self.image_names:
             if not np.array_equal(self.coordMatrix[self.image_names.index(image), 0,], self.nullArray):
-                row = [image]
-                for point in self.coordMatrix[self.image_names.index(image),]:
+                row = [image, ', '.join([self.emotion_choices[i] for i in self.emotionList.GetSelections()])]
+                for index, point in enumerate(self.coordMatrix[self.image_names.index(image),]):
                     if not np.array_equal(self.nullArray, point):
+                        row_index = first_row[len(row)]
+                        assoc_label = self.make_face_label(self.Canvas._ForeDrawList[index])
+                        while row_index != assoc_label:
+                            row.append('')
+                            row.append('')
+                            row_index = first_row[len(row)]
+
                         row.append(abs(point[0]))
                         row.append(abs(point[1]))
                 writer.writerow(row)
+
 
     # Triggers on event selection
     def on_select(self, event):
@@ -356,16 +408,26 @@ class FaceMapperFrame(wx.Frame):
 
     # Triggers on selecting a face part
     def color_select(self, event):
-        num = event.GetInt()
-        name = list(self.faceParts.keys())[num]
-        self.colourData.SetColour(self.faceParts[name][2])
-        color_dlg = ccd.CubeColourDialog(self, self.colourData)
-        if color_dlg.ShowModal() == wx.ID_OK:
-            self.firstColors = False
-            self.colourData = color_dlg.GetColourData()
-            self.color_db.AddColour(name, self.colourData.GetColour())
-            # self.faceParts[name][2] = self.colourData.GetColour().GetAsString()
-            self.display_image(zoom=False)
+        list_dlg = wx.SingleChoiceDialog(self, message="Choose an option", caption="list option",
+                                         choices=['Reset Num', 'Choose Color'])
+        if list_dlg.ShowModal() == wx.ID_OK:
+            if list_dlg.GetSelection() == 'Choose Color':
+                num = event.GetInt()
+                name = list(self.faceParts.keys())[num]
+                self.colourData.SetColour(self.faceParts[name][2])
+                color_dlg = ccd.CubeColourDialog(self, self.colourData)
+                if color_dlg.ShowModal() == wx.ID_OK:
+                    self.firstColors = False
+                    self.colourData = color_dlg.GetColourData()
+                    self.color_db.AddColour(name, self.colourData.GetColour())
+                    # self.faceParts[name][2] = self.colourData.GetColour().GetAsString()
+                    self.display_image(zoom=False)
+            else:
+                self.reset_face_part_values()
+                self.reset_face_parts()
+                self.reset_face_num()
+                self.make_face_label_list()
+
 
     # Displays image
     def display_image(self, zoom):
@@ -379,7 +441,6 @@ class FaceMapperFrame(wx.Frame):
                 self.dotDiam = self.imHeight / 100
 
         self.reset_face_parts()
-        part_counter = 0
         for index, circle in enumerate(self.coordMatrix[self.imageIndex,]):
             if not (np.array_equal(circle, self.nullArray)) and circle[2] == 0:
                 if index >= 1:
@@ -401,18 +462,8 @@ class FaceMapperFrame(wx.Frame):
                     circ.Bind(FloatCanvas.EVT_FC_LEAVE_OBJECT, self.selection_reset)
                 circle[2] = 1
 
-        for circle in self.Canvas._ForeDrawList:
-            face_part = self.faceParts[list(self.faceParts.keys())[part_counter]]
-            face_part[0] += 1
-            circle.SetColor(face_part[2].GetAsString())
-            circle.SetLineStyle('Solid')
-            if face_part[0] == face_part[1]:
-                part_counter += 1
-            self.make_face_label(circle)
+        self.make_face_label_list()
 
-        self.counterList.Clear()
-        self.reset_face_labels()
-        self.counterList.Set(self.faceLabels)
         self.Canvas.Draw()
         if len(self.Canvas._ForeDrawList) >= 1:
             self.faceBB = Utilities.BBox.fromPoints([circ.XY for circ in self.Canvas._ForeDrawList])
@@ -425,12 +476,12 @@ class FaceMapperFrame(wx.Frame):
     # Triggers on left mouse click
     def on_left_down(self, event):
         if not self.pressedKeys[wx.WXK_CONTROL]:
-            self.add_coords(event)
+            self.add_coords(event.Coords)
 
     # Adds location of event to coordinate matrix
-    def add_coords(self, event):
+    def add_coords(self, coords):
         if len(self.Canvas._ForeDrawList) < self.totalDotNum:
-            self.coordMatrix[self.imageIndex, len(self.Canvas._ForeDrawList), 0:3] = np.append(event.Coords,
+            self.coordMatrix[self.imageIndex, len(self.Canvas._ForeDrawList), 0:3] = np.append(coords,
                                                                                                np.array([0.0]))
             self.display_image(zoom=False)
 
@@ -520,6 +571,9 @@ class FaceMapperFrame(wx.Frame):
 
     def on_key_press(self, event):
         self.pressedKeys[event.GetKeyCode()] = True
+        # if event.GetKeyCode() == wx.WXK_DELETE:
+
+
 
     def on_key_release(self, event):
         self.pressedKeys[event.GetKeyCode()] = False
@@ -669,6 +723,22 @@ class FaceMapperFrame(wx.Frame):
         else:
             self.remove_labels()
 
+    def make_face_label_list(self):
+        self.part_counter = 0
+        face_part = self.faceParts[list(self.faceParts.keys())[self.part_counter]]
+        for circle in self.Canvas._ForeDrawList:
+            face_part = self.faceParts[list(self.faceParts.keys())[self.part_counter]]
+            face_part[0] += 1
+            circle.SetColor(face_part[2].GetAsString())
+            circle.SetLineStyle('Solid')
+            if face_part[0] == face_part[1]:
+                self.part_counter += 1
+            self.make_face_label(circle)
+        self.counterList.Clear()
+        self.reset_face_labels()
+        self.counterList.Set(self.faceLabels)
+
+
     # Triggers on opening of CSV file
     def on_open(self, event):
         print("Open")
@@ -725,6 +795,9 @@ class FaceMapperFrame(wx.Frame):
     # Returns face number for a given circle
     def make_face_label(self, circle):
         if not np.array_equal(circle.XY, self.nullArray[0:2]):
+            # circ_ind = self.Canvas._ForeDrawList(circle)
+            # part_ind = self.faceParts[self.find_face_part(circle)][0]
+            #label_num =
             return str(self.faceNums[self.Canvas._ForeDrawList.index(circle)])
 
     def remove_labels(self):
@@ -736,10 +809,19 @@ class FaceMapperFrame(wx.Frame):
     def find_face_part(self, circle):
         circ_index = self.Canvas._ForeDrawList.index(circle)
         for part in list(self.faceParts.keys()):
-            if self.faceParts[part][1] < circ_index:
+            if self.faceParts[part][1] <= circ_index:
                 circ_index -= self.faceParts[part][1]
             else:
                 return part
+
+    def next_part(self, event):
+        ind = len(self.Canvas._ForeDrawList) - 1
+        part = self.find_face_part(self.Canvas._ForeDrawList[ind])
+        label = self.make_face_label(self.Canvas._ForeDrawList[ind])
+        self.face_part_values[part] = str(label[len(label) - 1])
+        self.reset_face_parts()
+        self.make_face_label_list()
+        self.reset_face_num()
 
     def set_coords(self, circle, x_y):
         circle.XY = x_y
