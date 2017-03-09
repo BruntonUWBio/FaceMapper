@@ -1,11 +1,12 @@
+import os
+import os.path
+
 import colorsys
 import csv
 import cv2
 import glob
 import math
 import numpy as np
-import os
-import os.path
 import wx
 import wx.lib.agw.cubecolourdialog as ccd
 from collections import defaultdict, OrderedDict
@@ -41,12 +42,14 @@ class FaceMapperFrame(wx.Frame):
                         frames_dlg = wx.TextEntryDialog(None, message='Please select frames per second', value='5')
                         if frames_dlg.ShowModal() == wx.ID_OK:
                             os.system('ffmpeg -i "{0}" -vf fps=1/{1} "{2}"'.format(image_dir, frames_dlg.GetValue(),
-                                                                                   self.image_dir + '/' + image_dir
+                                                                                   self.image_dir + '/' + os.path.basename(
+                                                                                       image_dir)
                                                                                    + '_out%03d.png'))
                     else:
                         self.smart_dlg = True
                         os.system('ffmpeg -i "{0}" -vf fps=1/{1} "{2}"'.format(image_dir, str(1), self.image_dir + '/'
-                                                                               + image_dir + '_out%03d.png'))
+                                                                               + os.path.basename(
+                            image_dir) + '_out%03d.png'))
         # ---------------- Basic Data -------------------
         else:
             self.image_dir = image_dir
