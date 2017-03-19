@@ -133,15 +133,9 @@ class FaceMapperFrame(wx.Frame):
         self.nullArray = np.array([-1.0, -1.0])
         self.coordMatrix = np.zeros((len(self.image_names), self.totalDotNum, len(self.coord_keys)))
         self.coordMatrix.fill(-1.0)
-        for image in self.coordMatrix:
-            partNum = 0
-            counter = 0
-            for index, circle in enumerate(image):
-                circle[5] = float(partNum)
-                val = self.dict_index(self.face_part_values, partNum)
-                if index - counter + 1 == val:
-                    partNum += 1
-                    counter += val
+        self.default_array = np.zeros(len(self.coord_keys))
+        self.default_array.fill(-1.0)
+        self.assign_part_nums()
 
         # ------------- Other Components ----------------
         self.CreateStatusBar()
@@ -186,7 +180,7 @@ class FaceMapperFrame(wx.Frame):
                                                   (self.sampleImage.GetHeight() / 1.5))
         self.sample_image_bitmap = wx.StaticBitmap(self, wx.NewId(), self.sampleImage.ConvertToBitmap())
         # self.sample_image_canvas.AddBitmap(self.sample_image_bitmap, (0,0))
-        self.nextButton = wx.Button(self, wx.NewId(), label='Press to move to Next Part')
+        self.nextButton = wx.Button(self, wx.NewId(), label='Next Part')
 
         self.emotion_choices = [
             'Happy',
@@ -201,7 +195,7 @@ class FaceMapperFrame(wx.Frame):
 
         self.emotionList = wx.ListBox(self, wx.NewId(), style=wx.LB_MULTIPLE, choices=self.emotion_choices)
 
-        self.saveButton = wx.Button(self, wx.NewId(), label='Press to Save and Continue')
+        self.saveButton = wx.Button(self, wx.NewId(), label='Save and Continue')
         self.labelButton = wx.Button(self, wx.NewId(), label='Show Labels')
         self.counterBox.Add(self.counterList, 1, wx.EXPAND)
         self.counterBox.Add(self.sample_image_bitmap, 4, wx.EXPAND)
@@ -296,6 +290,17 @@ class FaceMapperFrame(wx.Frame):
                 abbr += split[i].strip()[0]
             for index in range(self.faceParts[facePart][1]):
                 self.faceNums.append(abbr + str(index + 1))
+
+    def assign_part_nums(self):
+        for image in self.coordMatrix:
+            partNum = 0
+            counter = 0
+            for index, circle in enumerate(image):
+                circle[5] = float(partNum)
+                val = self.dict_index(self.face_part_values, partNum)
+                if index - counter + 1 == val:
+                    partNum += 1
+                    counter += val
 
     # Resets mouse events, only tracks left down, right down, and multiple select
     def bind_all_mouse_events(self):
@@ -450,7 +455,7 @@ class FaceMapperFrame(wx.Frame):
         dl = self.draw_list()
         dl_key_list = sorted(dl.keys())
         # for index, circle in enumerate(self.coordMatrix[self.imageIndex,]):
-        #    if not (np.array_equal(circle[0:2], self.nullArray)) and not (self.is_occluded(circle) and self.is_null(circle, 'occluded')) and circle[2] == 0:
+        #    if not (np.array_equal(circle[0:2], yy)) and not (self.is_occluded(circle) and self.is_null(circle, 'occluded')) and circle[2] == 0:
         for index in dl_key_list:
             circle = dl[index]
             if circle[2] == 0:
@@ -582,8 +587,8 @@ class FaceMapperFrame(wx.Frame):
 
     def on_key_press(self, event):
         self.pressedKeys[event.GetKeyCode()] = True
-        # if event.GetKeyCode() == wx.WXK_DELETE:
-
+        if event.GetKeyCode() == wx.WXK_DELETE:
+            self.del_selections()
 
 
     def on_key_release(self, event):
@@ -612,6 +617,15 @@ class FaceMapperFrame(wx.Frame):
                 ))
             self.Canvas.Draw()
             self.Canvas.Bind(FloatCanvas.EVT_LEFT_UP, self.fin_select)
+
+    def del_selections(self):
+        for circle in self.selections:
+            index = self.find_circle_coord_ind(circle.XY)
+            self.curr_image_points()[index] = self.default_array
+        self.Canvas.RemoveObjects(self.selections)
+        self.clear_all_selections()
+        self.assign_part_nums()
+        self.display_image(zoom=False)
 
     def fin_select(self, event):
         # self.selections.clear()
@@ -650,18 +664,21 @@ class FaceMapperFrame(wx.Frame):
                 self.pre_rotate_coords.append(circle.XY - self.half)
             self.Canvas.Bind(FloatCanvas.EVT_MOTION, self.rotate)
         else:  # clears selections
-            if event and event.EventType == 10232:
+            if event:
                 self.are_selecting_multiple = False
             if not self.are_selecting_multiple:
-                for circle in self.Canvas._ForeDrawList:
-                    circle.SetLineStyle('Solid')
-                if self.select_rectangle:
-                    self.rectangleStart = None
-                    self.Canvas.RemoveObject(self.select_rectangle)
-                    self.select_rectangle = None
-                self.selections.clear()
-                self.display_selections()
-                self.Canvas.Draw()
+                self.clear_all_selections()
+
+    def clear_all_selections(self):
+        for circle in self.Canvas._ForeDrawList:
+            circle.SetLineStyle('Solid')
+        if self.select_rectangle:
+            self.rectangleStart = None
+            self.Canvas.RemoveObject(self.select_rectangle)
+            self.select_rectangle = None
+        self.selections.clear()
+        self.display_selections()
+        self.Canvas.Draw()
 
     def rotate(self, event):
         is_right_down = wx.GetMouseState().RightIsDown()
@@ -736,8 +753,6 @@ class FaceMapperFrame(wx.Frame):
             self.remove_labels()
 
     def make_face_label_list(self):
-        # self.part_counter = 0
-        # face_part = self.faceParts[list(self.faceParts.keys())[self.part_counter]]
         dl = self.draw_list()
         for index in sorted(dl.keys()):
             circle = dl[index]
@@ -746,9 +761,6 @@ class FaceMapperFrame(wx.Frame):
             circle = self.find_circle(dl[index][0:2])
             circle.SetColor(face_part[2].GetAsString())
             circle.SetLineStyle('Solid')
-            # if face_part[0] == face_part[1]:
-            #    self.part_counter += 1
-            #self.make_face_label(circle)
         self.counterList.Clear()
         self.reset_face_labels()
         self.counterList.Set(self.faceLabels)

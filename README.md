@@ -6,6 +6,7 @@ Hold CTRL while scrolling on a dot to change the color for all of the dots in th
 CTRL click and drag to select multiple dots (selected dots have dashed outlines)<br />
 CTRL + right-click + drag on canvas will rotate all selections around their center <br />
 Right click to remove selections  <br />
+Press DEL while dots are selected to remove them <br />
 
 Requires:
 - ffmpeg (for video processing)
@@ -13,8 +14,7 @@ Requires:
 Features in the future:
 
 - Changing number of dots
-- Better dot skipping
-- Drag labels
-
-
-Send requests to gvelchuru@gmail.com
+- Re-mirror
+- hotkeys for all of one type
+- save annotations from csv
+- guess button
