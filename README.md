@@ -1,4 +1,4 @@
-Use this tool to annotate a sequence of faces from a directory or video with dots
+Use this tool to annotate a sequence of faces from a directory or video with dots - the coordinates can be saved to a CSV
 
 Right-click and drag on a dot to change size<br />
 Click on one of the categories on the right to change a color or reset numbers<br />
@@ -14,7 +14,6 @@ Requires:
 Features in the future:
 
 - Changing number of dots
-- Re-mirror
 - hotkeys for all of one type
 - save annotations from csv
 - guess button

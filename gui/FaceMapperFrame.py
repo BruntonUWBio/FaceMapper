@@ -68,8 +68,6 @@ class FaceMapperFrame(wx.Frame):
 
         self.image_names.sort()
 
-        # if self.smart_dlg:
-        #    self.smart_image_names = self.image_names[0]
         self.faceBB = None
 
         self.filename = None
@@ -197,9 +195,11 @@ class FaceMapperFrame(wx.Frame):
 
         self.saveButton = wx.Button(self, wx.NewId(), label='Save and Continue')
         self.labelButton = wx.Button(self, wx.NewId(), label='Show Labels')
+        self.re_mirror_button = wx.Button(self, wx.NewId(), label='Re-Mirror')
         self.counterBox.Add(self.counterList, 1, wx.EXPAND)
         self.counterBox.Add(self.sample_image_bitmap, 4, wx.EXPAND)
         self.counterBox.Add(self.nextButton, .5, wx.EXPAND)
+        self.counterBox.Add(self.re_mirror_button, .5, wx.EXPAND)
         self.counterBox.Add(self.emotionList, 1, wx.EXPAND)
         self.counterBox.Add(self.labelButton, .5, wx.EXPAND)
         self.counterBox.Add(self.saveButton, .5, wx.EXPAND)
@@ -226,6 +226,7 @@ class FaceMapperFrame(wx.Frame):
         self.Bind(wx.EVT_BUTTON, self.on_button_save, id=self.saveButton.GetId())
         self.Bind(wx.EVT_BUTTON, self.show_labels, id=self.labelButton.GetId())
         self.Bind(wx.EVT_BUTTON, self.next_part, id=self.nextButton.GetId())
+        self.Bind(wx.EVT_BUTTON, self.re_mirror, id=self.re_mirror_button.GetId())
         self.bind_all_mouse_events()
         self.Bind(wx.EVT_MENU, self.on_open, id=wx.ID_OPEN)
         self.Bind(wx.EVT_MENU, self.on_save, id=wx.ID_SAVE)
@@ -263,13 +264,6 @@ class FaceMapperFrame(wx.Frame):
         self.faceParts.clear()
         for facePart in list(self.face_part_values.keys()):
             self.faceParts[facePart] = [0, int(self.face_part_values[facePart]), self.color_db.Find(facePart)]
-
-            # self.faceParts["Left Eye"] = [0, 6, self.color_db.Find("Left Eye")]
-            # self.faceParts["Right Eye"] = [0, 6, self.color_db.Find("Right Eye")]
-            # self.faceParts["Mouth"] = [0, 20, self.color_db.Find("Mouth")]
-            # self.faceParts["Jaw"] = [0, 17, self.color_db.Find("Jaw")]
-            # self.faceParts["Eyebrows"] = [0, 10, self.color_db.Find("Eyebrows")]
-            # self.faceParts["Nose"] = [0, 9, self.color_db.Find("Nose")]
 
     # Makes face labels based on the face parts
     def reset_face_labels(self):
@@ -386,6 +380,20 @@ class FaceMapperFrame(wx.Frame):
         if should_save:
             self.on_save(event)
 
+    def re_mirror(self, event):
+        if self.imageIndex >= 1:
+            self.recur_mirror(self.imageIndex)
+            self.Canvas.Draw()
+
+    def recur_mirror(self, index):
+        if not self.no_dots(index):
+            dl = self.draw_list(index)
+            for ind in dl.keys():
+                circ_ind = self.find_circle_coord_ind(dl[ind][0:2])
+                prev_circ = self.coordMatrix[index - 1, circ_ind]
+                self.set_coords(self.find_circle(self.curr_image_points()[circ_ind][0:2]), prev_circ[0:2], im_ind=index)
+            self.recur_mirror(index + 1)
+
     # Save coordinates to a csv file
     def save(self, path):
         writer = csv.writer(open(path, 'w'))
@@ -454,8 +462,6 @@ class FaceMapperFrame(wx.Frame):
         self.reset_face_parts()
         dl = self.draw_list()
         dl_key_list = sorted(dl.keys())
-        # for index, circle in enumerate(self.coordMatrix[self.imageIndex,]):
-        #    if not (np.array_equal(circle[0:2], yy)) and not (self.is_occluded(circle) and self.is_null(circle, 'occluded')) and circle[2] == 0:
         for index in dl_key_list:
             circle = dl[index]
             if circle[2] == 0:
@@ -759,8 +765,9 @@ class FaceMapperFrame(wx.Frame):
             face_part = self.dict_index(self.faceParts, int(circle[5]))
             face_part[0] += 1
             circle = self.find_circle(dl[index][0:2])
-            circle.SetColor(face_part[2].GetAsString())
-            circle.SetLineStyle('Solid')
+            if circle is not None:
+                circle.SetColor(face_part[2].GetAsString())
+                circle.SetLineStyle('Solid')
         self.counterList.Clear()
         self.reset_face_labels()
         self.counterList.Set(self.faceLabels)
@@ -830,14 +837,6 @@ class FaceMapperFrame(wx.Frame):
         self.Canvas.Draw()
         self.labelButton.SetLabel('Show Labels')
 
-    # def find_face_part(self, circle):
-    #    circ_index = self.Canvas._ForeDrawList.index(circle)
-    #    for part in list(self.faceParts.keys()):
-    #        if self.faceParts[part][1] <= circ_index:
-    #            circ_index -= self.faceParts[part][1]
-    #        else:
-    #            return part
-
     def next_part(self, event):
         ind = self.find_first_free_pos() - 1
         partIndex = self.curr_image_points()[ind, 5]
@@ -847,25 +846,31 @@ class FaceMapperFrame(wx.Frame):
             ind += 1
             nextCirc = self.curr_image_points()[ind + 1]
 
-
-    def set_coords(self, circle, x_y):
+    def set_coords(self, circle, x_y, im_ind=None):
+        if im_ind == None:
+            im_ind = self.imageIndex
+        index = self.find_circle_coord_ind(x_y)
         circle.XY = x_y
-        index = self.Canvas._ForeDrawList.index(circle)
-        self.coordMatrix[self.imageIndex, index, 0:2] = x_y
+        self.coordMatrix[im_ind, index, 0:2] = x_y
 
     def find_circle(self, x_y):
         x_y_list = [circle.XY for circle in self.Canvas._ForeDrawList]
-        for index, c_x_y in enumerate(x_y_list):
-            if np.array_equal(c_x_y, x_y):
-                return self.Canvas._ForeDrawList[index]
-        return None
+        ind = self.shortest_distance(x_y_list, x_y)
+        return self.Canvas._ForeDrawList[ind]
 
     def find_circle_coord_ind(self, x_y):
-        x_y_list = [circle[0:2] for circle in self.coordMatrix[self.imageIndex,]]
+        x_y_list = [tuple(circle[0:2]) for circle in self.curr_image_points() if not self.circ_is_null(circle)]
+        return self.shortest_distance(x_y_list, x_y)
+
+    def shortest_distance(self, x_y_list, x_y):
+        shortest_distance = None
+        shortest_distance_ind = None
         for index, c_x_y in enumerate(x_y_list):
-            if np.array_equal(c_x_y, x_y):
-                return index
-        return None
+            distance = self.distance(c_x_y, x_y)
+            if shortest_distance is None or distance < shortest_distance:
+                shortest_distance = distance
+                shortest_distance_ind = index
+        return shortest_distance_ind
 
     def find_first_free_pos(self):
         for i in range(self.totalDotNum):
@@ -873,9 +878,14 @@ class FaceMapperFrame(wx.Frame):
             if self.circ_is_null(circ) and circ[4] != 1:
                 return i
 
-    def draw_list(self):
-        return {index: circ for index, circ in enumerate(self.curr_image_points()) if
+    def draw_list(self, ind=None):
+        if ind is None:
+            ind = self.imageIndex
+        return {index: circ for index, circ in enumerate(self.curr_image_points(ind)) if
                 (not self.circ_is_null(circ) and not self.is_occluded(circ))}
+
+    def distance(self, p1, p2):
+        return math.sqrt(math.pow(p2[1] - p1[1], 2) + math.pow(p2[0] - p1[0], 2))
 
     @staticmethod
     def find_bb_half(bbox):
@@ -898,14 +908,22 @@ class FaceMapperFrame(wx.Frame):
         bool = num == -1.0
         return bool
 
-    def curr_image_points(self):
-        return self.coordMatrix[self.imageIndex,]
+    def curr_image_points(self, ind=None):
+        if ind is None:
+            ind = self.imageIndex
+        return self.coordMatrix[ind,]
 
     def dict_index(self, dict, index):
         return dict[list(dict.keys())[int(index)]]
 
     def circ_is_null(self, circle):
         return np.array_equal(circle[0:2], self.nullArray)
+
+    def no_dots(self, index):
+        for circle in self.coordMatrix[index,]:
+            if not self.circ_is_null(circle):
+                return False
+        return True
 if __name__ == '__main__':
     app = wx.App(False)
     type_dialog = wx.SingleChoiceDialog(None, message="Options", caption="Select either",
