@@ -398,9 +398,11 @@ class FaceMapperFrame(wx.Frame):
         if not self.no_dots(index):
             dl = self.draw_list(index)
             for ind in dl.keys():
-                circ_ind = self.find_circle_coord_ind(dl[ind][0:2], ind=index)
-                prev_circ = self.coordMatrix[index - 1, circ_ind]
-                self.set_coords(self.find_circle(self.curr_image_points()[circ_ind][0:2]), prev_circ[0:2], im_ind=index)
+                # circ_ind = self.find_circle_coord_ind(dl[ind][0:2], ind=index)
+                prev_circ = self.coordMatrix[index - 1, ind]
+                if not self.circ_is_null(prev_circ):
+                    self.set_coords(self.find_circle(self.curr_image_points()[circ_ind][0:2]), prev_circ[0:2],
+                                    im_ind=index)
             self.recur_mirror(index + 1)
 
     # Save coordinates to a csv file
@@ -608,8 +610,6 @@ class FaceMapperFrame(wx.Frame):
         self.pressedKeys[event.GetKeyCode()] = True
         if event.GetKeyCode() == wx.WXK_DELETE:
             self.del_selections()
-        if event.GetKeyCode() in self.part_hot_keys:
-            self.select_part(self.part_hot_keys[event.GetKeyCode()])
 
     def select_part(self, index):
         self.clear_all_selections()
@@ -739,37 +739,26 @@ class FaceMapperFrame(wx.Frame):
     # Shows face numbers for each circle
     def show_labels(self, event):
         if len(self.shownLabels) == 0:
-            #     for index, circle in enumerate(self.Canvas._ForeDrawList):
-            #         if not np.array_equal(circle, self.nullArray):
-            #
-            #             t = self.Canvas.AddObject(t)
-            #             self.shownLabels.append(t)
-            #     self.Canvas.Draw()
-            i = 0
-            for facePart in list(self.faceParts.keys()):
-                face_part_bb = None
-                face_part_circles = []
-                if 0 + i < len(self.Canvas._ForeDrawList):
-                    for j in range(0 + i, self.faceParts[facePart][1] + i):
-                        if j < len(self.Canvas._ForeDrawList):
-                            face_part_circles.append(self.Canvas._ForeDrawList[j])
-                    face_part_bb = Utilities.BBox.fromPoints([circle.XY for circle in face_part_circles])
-                    face_part_bb_center = self.find_bb_half(face_part_bb)
-                    for j in range(0 + i, self.faceParts[facePart][1] + i):
-                        if j < len(self.Canvas._ForeDrawList):
-                            circle = self.Canvas._ForeDrawList[j]
-                            coord_diff = circle.XY - face_part_bb_center
-                            mag_coord_diff = np.sqrt(np.square(coord_diff[0]) + np.square(coord_diff[1]))
-                            unit_coord_diff = np.array(
-                                [np.divide(coord_diff[0], mag_coord_diff), np.divide(coord_diff[1], mag_coord_diff)])
-                            theta = self.find_theta(unit_coord_diff[1], unit_coord_diff[0])
-                            WH_in_dir_of_diff = self.rotate_mat(theta, 2 * circle.WH.transpose())
-                            t = FloatCanvas.ScaledText(String=self.make_face_label(circle),
-                                                       XY=(circle.XY + WH_in_dir_of_diff.transpose()),
-                                                       Size=circle.WH[0] * .85, Color=circle.LineColor)
-                            t = self.Canvas.AddObject(t)
-                            self.shownLabels.append(t)
-                i += self.faceParts[facePart][1]
+            part_dict = self.part_dict()
+            for index in part_dict.keys():
+                face_part_circles = part_dict[index]
+                face_part_bb = Utilities.BBox.fromPoints([circle[0:2] for circle in face_part_circles])
+                face_part_bb_center = self.find_bb_half(face_part_bb)
+                for circle in face_part_circles:
+                    circle = self.find_circle(circle[0:2])
+                    coord_diff = circle.XY - face_part_bb_center
+                    mag_coord_diff = np.sqrt(np.square(coord_diff[0]) + np.square(coord_diff[1]))
+                    unit_coord_diff = np.array(
+                        [np.divide(coord_diff[0], mag_coord_diff), np.divide(coord_diff[1], mag_coord_diff)])
+                    theta = self.find_theta(unit_coord_diff[1], unit_coord_diff[0])
+                    WH_in_dir_of_diff = self.rotate_mat(theta, 2 * circle.WH.transpose())
+                    t = FloatCanvas.ScaledText(String=self.make_face_label(circle),
+                                               XY=(circle.XY + WH_in_dir_of_diff.transpose()),
+                                               Size=circle.WH[0] * .85, Color=circle.LineColor)
+                    t = self.Canvas.AddObject(t)
+                    self.shownLabels.append(t)
+                    # l = FloatCanvas.Line(np.array([circle.XY, face_part_bb_center]))
+                    # l = self.Canvas.AddObject(l)
             self.Canvas.Draw()
             self.labelButton.SetLabel('Hide Labels')
         else:
@@ -907,6 +896,12 @@ class FaceMapperFrame(wx.Frame):
             ind = self.imageIndex
         return {index: circ for index, circ in enumerate(self.curr_image_points(ind)) if
                 (not self.circ_is_null(circ) and not self.is_occluded(circ))}
+
+    def part_dict(self):
+        return {k: v for k, v in {
+            index: [circle for circle in self.curr_image_points() if
+                    (circle[5] == index and not self.circ_is_null(circle))]
+            for index in range(len(self.faceParts.keys()))}.items() if len(v) > 1}
 
     @staticmethod
     def find_bb_half(bbox):
