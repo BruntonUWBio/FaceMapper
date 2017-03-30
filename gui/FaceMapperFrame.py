@@ -241,6 +241,7 @@ class FaceMapperFrame(wx.Frame):
             wx.WXK_DELETE: False
         }
 
+        # Create the default facenums list
         self.default_face_nums = []
         for facePart in self.faceParts.keys():
             split = facePart.split()
@@ -250,6 +251,7 @@ class FaceMapperFrame(wx.Frame):
             for index in range(self.faceParts[facePart][1]):
                 self.default_face_nums.append(abbr + str(index + 1))
 
+    #Resets face part values to their defaults
     def reset_face_part_values(self):
         self.face_part_values.clear()
         self.face_part_values["Left Eye"] = 6
@@ -352,6 +354,7 @@ class FaceMapperFrame(wx.Frame):
 
     # Mirrors coordinates from previous image, if previous image exists
     def mirror_im(self, event, should_save, check_ssim_if_smart):
+        cv_prev_image = None
         if self.imageIndex >= 1 and self.circ_is_null(self.coordMatrix[self.imageIndex, 0,]):
             self.coordMatrix[self.imageIndex,] = self.coordMatrix[self.imageIndex - 1,]
             for circle in self.coordMatrix[self.imageIndex,]:
@@ -369,8 +372,6 @@ class FaceMapperFrame(wx.Frame):
                 cv_prev_image = cv2.imread(os.path.join(self.image_dir, self.prev_image_name))
                 self.prev_image_name = None
             cv_curr_image = cv2.imread(filename)
-            # if not self.prev_image_name:
-            #    self.first_click = True
 
             if self.faceBB is not None:
                 world_face_bb = Utilities.BBox.fromPoints([abs(self.faceBB[0]), abs(self.faceBB[1])])
@@ -398,10 +399,10 @@ class FaceMapperFrame(wx.Frame):
         if not self.no_dots(index):
             dl = self.draw_list(index)
             for ind in dl.keys():
-                # circ_ind = self.find_circle_coord_ind(dl[ind][0:2], ind=index)
+                #circ_ind = self.find_circle_coord_ind(dl[ind][0:2], ind=index)
                 prev_circ = self.coordMatrix[index - 1, ind]
                 if not self.circ_is_null(prev_circ):
-                    self.set_coords(self.find_circle(self.curr_image_points()[circ_ind][0:2]), prev_circ[0:2],
+                    self.set_coords(self.find_circle(self.curr_image_points()[ind][0:2]), prev_circ[0:2],
                                     im_ind=index)
             self.recur_mirror(index + 1)
 
