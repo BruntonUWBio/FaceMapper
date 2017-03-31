@@ -8,6 +8,7 @@ CTRL + right-click + drag on canvas will rotate all selections around their cent
 Right click to remove selections  <br />
 Press DEL while dots are selected to remove them <br />
 CTRL + Click on a dot to select all dots of that part <br />
+Double-click on a dot to mark/unmark as guess <br />    
 
 Requires:
 - ffmpeg (for video processing)
@@ -17,4 +18,3 @@ Features in the future:
 - Fix labels
 - Changing number of dots
 - save annotations from csv
-- guess button

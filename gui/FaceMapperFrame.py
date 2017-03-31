@@ -201,7 +201,7 @@ class FaceMapperFrame(wx.Frame):
         self.rightBox.Add(self.sample_image_bitmap, 4, wx.EXPAND)
         self.rightBox.Add(self.nextButton, .5, wx.EXPAND)
         self.rightBox.Add(self.re_mirror_button, .5, wx.EXPAND)
-        self.rightBox.Add(self.emotionList, 1, wx.EXPAND)
+        self.leftBox.Add(self.emotionList, 1, wx.EXPAND)
         self.rightBox.Add(self.labelButton, .5, wx.EXPAND)
         self.rightBox.Add(self.saveButton, .5, wx.EXPAND)
 
@@ -212,13 +212,13 @@ class FaceMapperFrame(wx.Frame):
         self.mainBox.Add(self.rightBox, 1, wx.EXPAND)
 
         self.box = wx.BoxSizer(wx.VERTICAL)
-        self.box.Add(self.mainBox, 1, wx.EXPAND)
+        self.box.Add(self.mainBox, 4, wx.EXPAND)
 
         self.selectionText = wx.StaticText(self, wx.NewId(), label='Nothing currently selected')
         self.box.Add(self.selectionText, 1, wx.EXPAND)
 
         #self.SetAutoLayout(True)
-        self.SetSizer(self.box)
+        self.SetSizerAndFit(self.box)
         self.Layout()
 
         # -------------- Event Handling ----------------
@@ -490,14 +490,16 @@ class FaceMapperFrame(wx.Frame):
                     circle.SetDiameter(diam)
                 else:
                     circ = FloatCanvas.Circle(XY=coord_circle[0:2], Diameter=diam, LineWidth=.5, LineColor='Red',
+                                              FillColor='Red',
                                               FillStyle='Transparent', InForeground=True)
+                    if coord_circle[self.coord_keys.index('guess')] == 1:
+                        circ.SetFillStyle('CrossHatch')
                     circ = self.Canvas.AddObject(circ)
                     circ.Bind(FloatCanvas.EVT_FC_LEFT_DOWN, self.circle_left_down)
                     circ.Bind(FloatCanvas.EVT_FC_RIGHT_DOWN, self.circle_resize)
                     circ.Bind(FloatCanvas.EVT_FC_ENTER_OBJECT, self.circle_hover)
                     circ.Bind(FloatCanvas.EVT_FC_LEAVE_OBJECT, self.selection_reset)
                     circ.Bind(FloatCanvas.EVT_FC_LEFT_DCLICK, self.mark_guess)
-                    circ.Bind(FloatCanvas.EVT_FC_RIGHT_DCLICK, self.mark_not_guess)
                 coord_circle[2] = 1
 
         self.make_face_label_list()
@@ -584,7 +586,7 @@ class FaceMapperFrame(wx.Frame):
     # Triggers when hovering over circle
     def circle_hover(self, circle):
         if not self.are_selecting_multiple:
-            self.selectionText.SetLabel('Hovering Over ' + str(self.make_face_label(circle)) + '\n' + 'Guess Status: {0}'.format(self.curr_image_points()[self.find_circle_coord_ind(circle.XY)][self.coord_keys.index('guess')]))
+            self.selectionText.SetLabel('Hovering Over ' + str(self.make_face_label(circle)))
             self.Canvas.Bind(FloatCanvas.EVT_MOUSEWHEEL, self.on_cmd_scroll)
             self.scrollingCircle = circle
 
@@ -594,10 +596,10 @@ class FaceMapperFrame(wx.Frame):
             for i in range(1, len(self.selections.keys())):
                 selection_text += ', ' + self.make_face_label(list(self.selections.keys())[i])
             selection_dict = {circle: self.curr_image_points()[self.find_circle_coord_ind(circle.XY)][self.coord_keys.index('guess')] for circle in self.selections.keys()}
-            guess_text = '\n Guess status: '
-            for circle in list(selection_dict.keys()):
-                guess_text += '{0}: {1}'.format(self.make_face_label(circle), selection_dict[circle])
-            self.selectionText.SetLabel(selection_text + guess_text)
+            # guess_text = '\n Guess status: '
+            # for circle in list(selection_dict.keys()):
+            #    guess_text += '{0}: {1}'.format(self.make_face_label(circle), selection_dict[circle])
+            self.selectionText.SetLabel(selection_text)
         else:
             self.selectionText.SetLabel('No Selections')
 
@@ -609,9 +611,9 @@ class FaceMapperFrame(wx.Frame):
             curr_color = self.faceParts[part][2]
             hsv_color = colorsys.rgb_to_hsv(curr_color.Red(), curr_color.Green(), curr_color.Blue())
             if event.GetWheelRotation() > 0:
-                delta = .1
+                delta = .05
             else:
-                delta = -.1
+                delta = -.05
             new_color = colorsys.hsv_to_rgb(hsv_color[0] + delta, hsv_color[1], hsv_color[2])
             self.color_db.AddColour(part, wx.Colour(new_color[0], new_color[1], new_color[2], alpha=wx.ALPHA_OPAQUE))
             self.display_image(zoom=False)
@@ -709,10 +711,16 @@ class FaceMapperFrame(wx.Frame):
                 self.clear_all_selections()
 
     def mark_guess(self, object):
-        self.curr_image_points(self.find_circle_coord_ind(object.XY))[self.coord_keys.index('guess')] = 1.0
+        val = self.curr_image_points()[self.find_circle_coord_ind(object.XY)][self.coord_keys.index('guess')]
 
-    def mark_not_guess(self, object):
-        self.curr_image_points(self.find_circle_coord_ind(object.XY))[self.coord_keys.index('guess')] = 0.0
+        if val == 1.0:
+            self.curr_image_points()[self.find_circle_coord_ind(object.XY)][self.coord_keys.index('guess')] = 0.0
+        else:
+            self.curr_image_points()[self.find_circle_coord_ind(object.XY)][self.coord_keys.index('guess')] = 1.0
+
+        object.SetFillStyle('CrossHatch')
+        self.Canvas.Draw()
+
 
     def clear_all_selections(self):
         for circle in self.Canvas._ForeDrawList:
@@ -799,12 +807,16 @@ class FaceMapperFrame(wx.Frame):
             face_part[0] += 1
             circle = self.find_circle(dl[index][0:2])
             if circle is not None:
-                circle.SetColor(face_part[2].GetAsString())
+                self.set_color(circle, face_part[2].GetAsString())
                 circle.SetLineStyle('Solid')
         self.counterList.Clear()
         self.reset_face_labels()
         self.counterList.Set(self.faceLabels)
 
+    @staticmethod
+    def set_color(circle, color):
+        circle.SetColor(color)
+        circle.SetFillColor(color)
 
     # Triggers on opening of CSV file
     def on_open(self, event):
