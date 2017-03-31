@@ -489,7 +489,7 @@ class FaceMapperFrame(wx.Frame):
                     circle.XY = coord_circle[0:2]
                     circle.SetDiameter(diam)
                 else:
-                    circ = FloatCanvas.Circle(XY=coord_circle[0:2], Diameter=diam, LineWidth=.5, LineColor='Red',
+                    circ = FloatCanvas.Circle(XY=coord_circle[0:2], Diameter=diam, LineWidth=.7, LineColor='Red',
                                               FillColor='Red',
                                               FillStyle='Transparent', InForeground=True)
                     if coord_circle[self.coord_keys.index('guess')] == 1:
@@ -720,7 +720,6 @@ class FaceMapperFrame(wx.Frame):
 
         object.SetFillStyle('CrossHatch')
         self.Canvas.Draw()
-
 
     def clear_all_selections(self):
         for circle in self.Canvas._ForeDrawList:
