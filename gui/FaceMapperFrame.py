@@ -434,7 +434,7 @@ class FaceMapperFrame(wx.Frame):
 
     def select_im(self, index):
         for i in range(len(self.image_names)):
-            if i != index:
+            if i == index:
                 for circle in self.coordMatrix[i,]:
                     if not self.circ_is_null(circle):
                         circle[2] = 0
