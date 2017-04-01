@@ -15,6 +15,5 @@ Requires:
 
 Features in the future:
 
-- Fix labels
 - Changing number of dots
 - save annotations from csv

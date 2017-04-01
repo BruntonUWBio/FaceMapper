@@ -774,28 +774,29 @@ class FaceMapperFrame(wx.Frame):
                     unit_coord_diff = np.array(
                         [np.divide(coord_diff[0], mag_coord_diff), np.divide(coord_diff[1], mag_coord_diff)])
                     theta = self.find_theta(unit_coord_diff[1], unit_coord_diff[0])
-                    w_h_in_dir_of_diff = self.rotate_mat(theta, 2 * circle.WH.transpose())
+                    w = np.array([circle.WH[0], 0.0])
+                    w_h_in_dir_of_diff = self.rotate_mat(theta, 2 * w.transpose())
                     t = FloatCanvas.ScaledText(String=self.make_face_label(circle),
                                                XY=(circle.XY + w_h_in_dir_of_diff.transpose()),
                                                Size=circle.WH[0] * .85,
                                                Color=circle.LineColor)
                     t = self.Canvas.AddObject(t)
                     self.shownLabels.append(t)
-                    # l = FloatCanvas.Line(np.array([circle.XY, face_part_bb_center]))
-                    # l = self.Canvas.AddObject(l)
+                    l = FloatCanvas.Line(np.array([circle.XY, face_part_bb_center]))
+                    l = self.Canvas.AddObject(l)
             self.Canvas.Draw()
             self.labelButton.SetLabel('Hide Labels')
         else:
             self.remove_labels()
 
     def find_theta(self, y, x):
-        theta = math.atan(np.divide(y, x))
-        if y < 0 < x:
-            theta += math.pi / 2
-        elif x < 0 and y < 0:
-            theta += math.pi
-        elif x < 0 < y:
-            theta += 1.5 * math.pi
+        theta = math.atan2(y, x)
+        # if y < 0 < x:
+        #    theta += math.pi / 2
+        # elif x < 0 and y < 0:
+        #    theta += math.pi
+        # elif x < 0 < y:
+        #    theta += 1.5 * math.pi
         return theta
 
     def make_face_label_list(self):
