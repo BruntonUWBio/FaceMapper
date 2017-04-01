@@ -16,4 +16,3 @@ Requires:
 Features in the future:
 
 - Changing number of dots
-- save annotations from csv

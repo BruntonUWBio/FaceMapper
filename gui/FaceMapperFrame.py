@@ -201,8 +201,8 @@ class FaceMapperFrame(wx.Frame):
         self.rightBox.Add(self.sample_image_bitmap, 4, wx.EXPAND)
         self.rightBox.Add(self.nextButton, .5, wx.EXPAND)
         self.rightBox.Add(self.re_mirror_button, .5, wx.EXPAND)
-        self.leftBox.Add(self.emotionList, 1, wx.EXPAND)
         self.rightBox.Add(self.labelButton, .5, wx.EXPAND)
+        self.leftBox.Add(self.emotionList, 1, wx.EXPAND)
         self.rightBox.Add(self.saveButton, .5, wx.EXPAND)
 
         # ----------------- Window Layout  -------------
@@ -309,8 +309,8 @@ class FaceMapperFrame(wx.Frame):
 
     # Sets coordinates based on CSV
     def open_csv_file(self, path):
-
-        reader = csv.reader(open(path, "rb"))
+        with open(path, 'rt') as csvfile:
+            reader = csv.reader(csvfile)
         # coords = {}
         # for row in reader:
         #    filename = row[0]
@@ -328,16 +328,19 @@ class FaceMapperFrame(wx.Frame):
         #    coords[filename] = points
         # print("CSV File Data: ", coords)
         # self.coords = coords
-        for index, row in enumerate(reader):
-            filename = row[0]
-            if filename == self.image_names[index]:
-                points = []
-                for i in range(0, len(row), 2):
-                    points.append(np.array([float(row[i]), float(row[i + 1])]))
-                for ind, point in enumerate(points):
-                    self.coordMatrix[index, ind, 0:2] = point
-                    self.coordMatrix[index, ind, 2] = 0
-
+            numRows = 0
+            for index, row in enumerate(reader):
+                filename = row[0]
+                if filename in self.image_names:
+                    index = self.image_names.index(filename)
+                    points = []
+                    for i in range(2, len(row), 3):
+                        points.append(np.array([float(row[i]), float(row[i + 1])]))
+                    for ind, point in enumerate(points):
+                        self.coordMatrix[index, ind, 0:2] = point
+                        self.coordMatrix[index, ind, 2] = 0
+                numRows += 1
+            self.select_im(numRows - 1)
     # Triggers on pressing "save and continue"
     def on_button_save(self, event):
         i = self.image_names.index(self.image_name)
@@ -429,10 +432,10 @@ class FaceMapperFrame(wx.Frame):
     # Triggers on event selection
     def on_select(self, event):
         self.image_name = event.GetString()
-        self.imageIndex = self.image_names.index(self.image_name)
-        self.select_im(index=self.imageIndex)
+        self.select_im(index=self.image_names.index(self.image_name))
 
     def select_im(self, index):
+        self.imageIndex = index
         for i in range(len(self.image_names)):
             if i == index:
                 for circle in self.coordMatrix[i,]:
@@ -595,10 +598,6 @@ class FaceMapperFrame(wx.Frame):
             selection_text = 'Current selections: ' + self.make_face_label(list(self.selections.keys())[0])
             for i in range(1, len(self.selections.keys())):
                 selection_text += ', ' + self.make_face_label(list(self.selections.keys())[i])
-            selection_dict = {circle: self.curr_image_points()[self.find_circle_coord_ind(circle.XY)][self.coord_keys.index('guess')] for circle in self.selections.keys()}
-            # guess_text = '\n Guess status: '
-            # for circle in list(selection_dict.keys()):
-            #    guess_text += '{0}: {1}'.format(self.make_face_label(circle), selection_dict[circle])
             self.selectionText.SetLabel(selection_text)
         else:
             self.selectionText.SetLabel('No Selections')
