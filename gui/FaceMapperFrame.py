@@ -212,13 +212,13 @@ class FaceMapperFrame(wx.Frame):
         self.mainBox.Add(self.rightBox, 1, wx.EXPAND)
 
         self.box = wx.BoxSizer(wx.VERTICAL)
-        self.box.Add(self.mainBox, 4, wx.EXPAND)
+        self.box.Add(self.mainBox, 5, wx.EXPAND)
 
         self.selectionText = wx.StaticText(self, wx.NewId(), label='Nothing currently selected')
         self.box.Add(self.selectionText, 1, wx.EXPAND)
 
         #self.SetAutoLayout(True)
-        self.SetSizerAndFit(self.box)
+        self.SetSizer(self.box)
         self.Layout()
 
         # -------------- Event Handling ----------------
@@ -487,7 +487,7 @@ class FaceMapperFrame(wx.Frame):
                     coord_circle[3] = self.dotDiam
                 diam = coord_circle[3]
 
-                if index < len(self.Canvas._ForeDrawList):
+                if index < len(self.Canvas._ForeDrawList) and self.find_circle(coord_circle[0:2]):
                     circle = self.find_circle(coord_circle[0:2])
                     circle.XY = coord_circle[0:2]
                     circle.SetDiameter(diam)
@@ -524,7 +524,7 @@ class FaceMapperFrame(wx.Frame):
 
     # Adds location of event to coordinate matrix
     def add_coords(self, coords):
-        if len(self.Canvas._ForeDrawList) < self.totalDotNum:
+        if self.length_of_coord_matrix() < self.totalDotNum:
             free_pos = self.find_first_free_pos()
             self.coordMatrix[self.imageIndex, free_pos, 0:3] = np.append(coords, np.array([0.0]))
             self.coordMatrix[self.imageIndex, free_pos, self.coord_keys.index('guess')] = 0.0
@@ -657,8 +657,8 @@ class FaceMapperFrame(wx.Frame):
 
     def del_selections(self):
         for circle in list(self.selections.keys()):
-            index = self.find_circle_coord_ind(circle.XY)
-            self.curr_image_points()[index] = self.default_array
+            index = self.find_circle_coord_ind(self.selections[circle])
+            self.coordMatrix[self.imageIndex, index] = self.default_array
         self.Canvas.RemoveObjects(self.selections)
         self.clear_all_selections()
         self.assign_part_nums()
@@ -714,10 +714,12 @@ class FaceMapperFrame(wx.Frame):
 
         if val == 1.0:
             self.curr_image_points()[self.find_circle_coord_ind(object.XY)][self.coord_keys.index('guess')] = 0.0
+            object.SetFillStyle('Transparent')
         else:
             self.curr_image_points()[self.find_circle_coord_ind(object.XY)][self.coord_keys.index('guess')] = 1.0
+            object.SetFillStyle('CrossHatch')
 
-        object.SetFillStyle('CrossHatch')
+
         self.Canvas.Draw()
 
     def clear_all_selections(self):
@@ -772,7 +774,7 @@ class FaceMapperFrame(wx.Frame):
                     mag_coord_diff = np.sqrt(np.square(coord_diff[0]) + np.square(coord_diff[1]))
                     unit_coord_diff = np.array(
                         [np.divide(coord_diff[0], mag_coord_diff), np.divide(coord_diff[1], mag_coord_diff)])
-                    theta = self.find_theta(unit_coord_diff[1], unit_coord_diff[0])
+                    theta = math.atan2(unit_coord_diff[1], unit_coord_diff[0])
                     w = np.array([circle.WH[0], 0.0])
                     w_h_in_dir_of_diff = self.rotate_mat(theta, 2 * w.transpose())
                     t = FloatCanvas.ScaledText(String=self.make_face_label(circle),
@@ -781,22 +783,11 @@ class FaceMapperFrame(wx.Frame):
                                                Color=circle.LineColor)
                     t = self.Canvas.AddObject(t)
                     self.shownLabels.append(t)
-                    l = FloatCanvas.Line(np.array([circle.XY, face_part_bb_center]))
-                    l = self.Canvas.AddObject(l)
             self.Canvas.Draw()
             self.labelButton.SetLabel('Hide Labels')
         else:
             self.remove_labels()
 
-    def find_theta(self, y, x):
-        theta = math.atan2(y, x)
-        # if y < 0 < x:
-        #    theta += math.pi / 2
-        # elif x < 0 and y < 0:
-        #    theta += math.pi
-        # elif x < 0 < y:
-        #    theta += 1.5 * math.pi
-        return theta
 
     def make_face_label_list(self):
         dl = self.draw_list()
@@ -902,12 +893,12 @@ class FaceMapperFrame(wx.Frame):
         for index, circle in enumerate(self.Canvas._ForeDrawList):
             if np.array_equal(circle.XY, x_y):
                 return self.Canvas._ForeDrawList[index]
-        raise ValueError
+        return None
 
     def find_circle_coord_ind(self, x_y, ind=None):
         if ind is None:
             ind = self.imageIndex
-        x_y_list = [tuple(circle[0:2]) for circle in self.coordMatrix[ind,] if not self.circ_is_null(circle)]
+        x_y_list = [tuple(circle[0:2]) for circle in self.coordMatrix[ind,]]
         for index, circle in enumerate(x_y_list):
             if np.array_equal(circle, x_y):
                 return index
@@ -981,6 +972,13 @@ class FaceMapperFrame(wx.Frame):
             if not self.circ_is_null(circle):
                 return False
         return True
+
+    def length_of_coord_matrix(self):
+        last = -1
+        for index, circle in enumerate(self.curr_image_points()):
+            if not self.circ_array_is_null(circle):
+                last = index
+        return last + 1
 
 if __name__ == '__main__':
     app = wx.App(False)
