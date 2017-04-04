@@ -976,7 +976,7 @@ class FaceMapperFrame(wx.Frame):
     def length_of_coord_matrix(self):
         last = -1
         for index, circle in enumerate(self.curr_image_points()):
-            if not self.circ_array_is_null(circle):
+            if not self.circ_is_null(circle):
                 last = index
         return last + 1
 
