@@ -576,15 +576,26 @@ class FaceMapperFrame(wx.Frame):
         is_right_down = wx.GetMouseState().RightIsDown()
         curr_y_coord = event.Coords[1]
         if is_right_down:
-            diff_coords = (curr_y_coord - self.pre_size_coords[1]) * .1 + abs(self.resizing_circle.WH)
-            diff = (diff_coords[0] + diff_coords[1])
-            self.coordMatrix[self.imageIndex, self.resizing_circle_index, 3] = diff
-            self.resizing_circle.SetDiameter(diff)
+            if wx.GetKeyState(wx.WXK_CONTROL):
+                for circle in self.selections:
+                    self.gen_resize(circle, self.resizing_circle, curr_y_coord)
+            else:
+                self.gen_resize(self.resizing_circle, self.resizing_circle, curr_y_coord)
             self.pre_size_coords = event.Coords
             self.Canvas.Draw()
 
+
         else:
             self.bind_all_mouse_events()
+
+    def gen_resize(self, circle, hitCircle, new_coord):
+        pre_size_coords = hitCircle.XY
+        diff_coords = (new_coord - pre_size_coords[1]) * .1 + abs(circle.WH)
+        diff = diff_coords[0] + diff_coords[1]
+        index = self.find_circle_coord_ind(pre_size_coords)
+        self.coordMatrix[self.imageIndex, index, 3] = diff
+        circle.SetDiameter(diff)
+
 
     # Triggers when hovering over circle
     def circle_hover(self, circle):

@@ -5,6 +5,7 @@ Click on one of the categories on the right to change a color or reset numbers<b
 Hold CTRL while scrolling on a dot to change the color for all of the dots in that category <br />
 CTRL click and drag to select multiple dots (selected dots have dashed outlines)<br />
 CTRL + right-click + drag on canvas will rotate all selections around their center <br />
+CTRL + right-click + drag on a dot will resize all selections <br />
 Right click to remove selections  <br />
 Press DEL while dots are selected to remove them <br />
 CTRL + Click on a dot to select all dots of that part <br />
