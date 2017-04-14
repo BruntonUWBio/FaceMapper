@@ -308,6 +308,7 @@ class FaceMapperFrame(wx.Frame):
         self.Canvas.Bind(FloatCanvas.EVT_MOTION, self.multi_select)
         self.Canvas.Bind(FloatCanvas.EVT_LEFT_DOWN, self.on_left_down)
         self.Canvas.Bind(FloatCanvas.EVT_RIGHT_DOWN, self.on_right_click)
+        self.Canvas.Bind(FloatCanvas.EVT_RIGHT_DCLICK, self.mark_multi_guess)
 
     # Sets coordinates based on CSV
     def open_csv_file(self, path):
@@ -509,6 +510,7 @@ class FaceMapperFrame(wx.Frame):
                     circ.Bind(FloatCanvas.EVT_FC_ENTER_OBJECT, self.circle_hover)
                     circ.Bind(FloatCanvas.EVT_FC_LEAVE_OBJECT, self.selection_reset)
                     circ.Bind(FloatCanvas.EVT_FC_LEFT_DCLICK, self.mark_guess)
+
                 coord_circle[2] = 1
 
         self.make_face_label_list()
@@ -724,6 +726,10 @@ class FaceMapperFrame(wx.Frame):
             if not self.are_selecting_multiple:
                 self.clear_all_selections()
 
+    def mark_multi_guess(self):
+        for circle in self.selections:
+            self.mark_guess(circle)
+
     def mark_guess(self, object):
         val = self.curr_image_points()[self.find_circle_coord_ind(object.XY)][self.coord_keys.index('guess')]
 
@@ -733,7 +739,6 @@ class FaceMapperFrame(wx.Frame):
         else:
             self.curr_image_points()[self.find_circle_coord_ind(object.XY)][self.coord_keys.index('guess')] = 1.0
             object.SetFillStyle('CrossHatch')
-
 
         self.Canvas.Draw()
 

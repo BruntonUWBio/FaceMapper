@@ -9,11 +9,8 @@ CTRL + right-click + drag on a dot will resize all selections <br />
 Right click to remove selections  <br />
 Press DEL while dots are selected to remove them <br />
 CTRL + Click on a dot to select all dots of that part <br />
-Double-click on a dot to mark/unmark as guess <br />    
+Double-click on a dot to mark/unmark as guess <br />
+Right double click on canvas to mark all selections as guess <br />
 
 Requires:
 - ffmpeg (for video processing)
-
-Features in the future:
-
-- Changing number of dots
