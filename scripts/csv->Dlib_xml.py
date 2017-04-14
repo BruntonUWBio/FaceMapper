@@ -10,8 +10,23 @@ from wx.lib.floatcanvas import Utilities
 
 
 def BB(points):
-    return Utilities.BBox.fromPoints([[i, i + 1] for i in range(0, len(points), 2)])
+    return Utilities.BBox.fromPoints([(points[i], points[i + 1]) for i in range(0, len(points), 2)])
 
+
+def indent(elem, level=0):
+    i = "\n" + level * "  "
+    if len(elem):
+        if not elem.text or not elem.text.strip():
+            elem.text = i + "  "
+        if not elem.tail or not elem.tail.strip():
+            elem.tail = i
+        for elem in elem:
+            indent(elem, level + 1)
+        if not elem.tail or not elem.tail.strip():
+            elem.tail = i
+    else:
+        if level and (not elem.tail or not elem.tail.strip()):
+            elem.tail = i
 
 if __name__ == '__main__':
     if len(sys.argv) != 2:
@@ -81,14 +96,14 @@ if __name__ == '__main__':
         e = ET.SubElement(images, 'image', {'file': '{0}'.format(file)})
         image_list[e] = {}
         coord_list = image_map[file]
-        bb = coord_list[0]
+        bb = coord_list[0].astype(int)
         bbox = ET.SubElement(e,
                              'box',
                              {
                                  'top': '{0}'.format(bb[0][1]),
-                                 'bottom': '{0}'.format(bb[0][0]),
+                                 'left': '{0}'.format(bb[0][0]),
                                  'width': '{0}'.format(bb[1][0] - bb[0][0]),
-                                 'height': '{0}'.format(bb[1][1] - bb[0][0])
+                                 'height': '{0}'.format(bb[1][1] - bb[0][1])
                              })
         image_list[e][bbox] = []
         j = 0
@@ -98,10 +113,22 @@ if __name__ == '__main__':
                 name = str('0' + str(j))
             else:
                 name = str(j)
-            p = ET.SubElement(e, 'part',
+            p = ET.SubElement(bbox, 'part',
                               {'name': '{0}'.format(name), 'x': '{0}'.format(coord_list[i]),
                                'y': '{0}'.format(coord_list[i + 1])})
             image_list[e][bbox].append(p)
             j += 1
-    tree = ET.ElementTree(element=data)
-    tree.write(csv_path + '.xml')
+    fake_tree = ET.Element(None)
+    pi = ET.PI("xml-stylesheet", "type='text/xsl' href='image_metadata_stylesheet.xsl'")
+    pi.tail = "\n"
+    fake_tree.append(pi)
+    fake_tree.append(data)
+    indent(fake_tree)
+    tree = ET.ElementTree(fake_tree)
+    tree.write(csv_path + '_with_landmarks.xml', encoding='ISO-8859-1', xml_declaration=True)
+    for image in list(data):
+        for file in list(image):
+            for box in list(file):
+                for part in list(box):
+                    box.remove(part)
+    tree.write(csv_path + '_without_landmarks.xml')

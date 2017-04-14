@@ -80,6 +80,7 @@ class FaceMapperFrame(wx.Frame):
         self.shownLabels = []
 
         self.selections = OrderedDict()
+        self.emotion_dict = defaultdict()
 
         # ---------- Colors ----
         self.color_db = wx.ColourDatabase()
@@ -224,6 +225,7 @@ class FaceMapperFrame(wx.Frame):
         # -------------- Event Handling ----------------
         self.Bind(wx.EVT_LISTBOX, self.on_select, id=self.list.GetId())
         self.Bind(wx.EVT_LISTBOX, self.color_select, id=self.counterList.GetId())
+        self.Bind(wx.EVT_LISTBOX, self.emotion_select, id=self.emotionList.GetId())
         self.Bind(wx.EVT_BUTTON, self.on_button_save, id=self.saveButton.GetId())
         self.Bind(wx.EVT_BUTTON, self.show_labels, id=self.labelButton.GetId())
         self.Bind(wx.EVT_BUTTON, self.next_part, id=self.nextButton.GetId())
@@ -334,6 +336,7 @@ class FaceMapperFrame(wx.Frame):
                 if filename in self.image_names:
                     index = self.image_names.index(filename)
                     points = []
+                    self.emotion_dict[filename] = row[1].split(',')
                     for i in range(2, len(row), 3):
                         points.append(np.array([float(row[i]), float(row[i + 1])]))
                     for ind, point in enumerate(points):
@@ -421,7 +424,7 @@ class FaceMapperFrame(wx.Frame):
         writer.writerow(first_row)
         for index, image in enumerate(self.image_names):
             if not self.circ_array_is_null(self.curr_image_points(index)):
-                row = [image, ', '.join([self.emotion_choices[i] for i in self.emotionList.GetSelections()])]
+                row = [image, ', '.join([self.emotion_choices[i] for i in self.emotion_dict[image]])]
                 for point in self.curr_image_points(index):
                     if not self.circ_is_null(point) or self.is_occluded(point):
                         row.append(point[0])
@@ -433,6 +436,9 @@ class FaceMapperFrame(wx.Frame):
     def on_select(self, event):
         self.image_name = event.GetString()
         self.select_im(index=self.image_names.index(self.image_name))
+
+    def emotion_select(self, event=None):
+        self.emotion_dict[self.image_names[self.imageIndex]] = self.emotionList.GetSelections()
 
     def select_im(self, index):
         self.imageIndex = index
@@ -584,7 +590,6 @@ class FaceMapperFrame(wx.Frame):
             self.pre_size_coords = event.Coords
             self.Canvas.Draw()
 
-
         else:
             self.bind_all_mouse_events()
 
@@ -595,7 +600,6 @@ class FaceMapperFrame(wx.Frame):
         index = self.find_circle_coord_ind(pre_size_coords)
         self.coordMatrix[self.imageIndex, index, 3] = diff
         circle.SetDiameter(diff)
-
 
     # Triggers when hovering over circle
     def circle_hover(self, circle):
