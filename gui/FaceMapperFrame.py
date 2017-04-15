@@ -371,6 +371,7 @@ class FaceMapperFrame(wx.Frame):
 
         filename = os.path.join(self.image_dir, self.image_name)
         self.current_image = wx.Image(filename)
+        self.imageIndex = self.image_names.index(self.image_name)
         self.list.SetSelection(self.imageIndex)
         self.remove_labels()
         self.display_image(zoom=True)
