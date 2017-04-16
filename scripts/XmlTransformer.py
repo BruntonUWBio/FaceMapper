@@ -191,16 +191,17 @@ class XmlTransformer:  # CSV File in Disguise
                                      })
                 image_list[e][bbox] = []
                 for ind in coord_dict.keys():
-                    name = ''
-                    if int(ind) < 10:
-                        name = str('0' + str(ind))
-                    else:
-                        name = str(ind)
-                    p = ET.SubElement(bbox, 'part',
-                                      {'name': '{0}'.format(name),
-                                       'x': '{0}'.format(coord_dict[ind][0]),
-                                       'y': '{0}'.format(coord_dict[ind][1])})
-                    image_list[e][bbox].append(p)
+                    if ind != 'bb':
+                        name = ''
+                        if ind < 10:
+                            name = str('0' + str(ind))
+                        else:
+                            name = str(ind)
+                        p = ET.SubElement(bbox, 'part',
+                                          {'name': '{0}'.format(name),
+                                           'x': '{0}'.format(coord_dict[ind][0]),
+                                           'y': '{0}'.format(coord_dict[ind][1])})
+                        image_list[e][bbox].append(p)
             return images
 
     def indent(self, elem, level=0):
