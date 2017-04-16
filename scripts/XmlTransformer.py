@@ -51,10 +51,18 @@ class XmlTransformer:  # CSV File in Disguise
                 for box in list(file):
                     for part in list(box):
                         box.remove(part)
-        tree.write(path + 'training.xml')
-        tree.write(path + 'testing_with_face_landmarks.xml')
+        tree.write(path + 'training.xml', encoding='ISO-8859-1', xml_declaration=True)
+
+        pi_fake = copy.deepcopy(pi)
+        test_fake_tree = ET.Element(None)
+        test_fake_tree.append(pi)
+        test_fake_tree.append(test_data)
+        self.indent(test_fake_tree)
+        test_tree = ET.ElementTree(test_fake_tree)
+
+        test_tree.write(path + 'testing_with_face_landmarks.xml', encoding='ISO-8859-1', xml_declaration=True)
         self.remove_parts(test_data)
-        tree.write(path + 'testing.xml')
+        test_tree.write(path + 'testing.xml', encoding='ISO-8859-1', xml_declaration=True)
 
     def remove_parts(self, data):
         for index, image in enumerate(data):
@@ -103,6 +111,8 @@ class XmlTransformer:  # CSV File in Disguise
         s = pt_file.read()
         split_lines = s.splitlines()[3:]
         split_lines = split_lines[0:len(split_lines) - 1]
+        if '}' in split_lines:
+            split_lines.remove('}')
         split_path = os.path.dirname(pts_path)
         image_map = defaultdict()
         just_file = os.path.basename(pts_path)
