@@ -116,6 +116,10 @@ class XmlTransformer:  # CSV File in Disguise
             split_lines.remove('}')
         if 'version: 1' in split_lines:
             split_lines.remove('version: 1')
+        if 'n_points: 68' in split_lines:
+            split_lines.remove('n_points: 68')
+        if '{' in split_lines:
+            split_lines.remove('{')
         split_path = os.path.dirname(pts_path)
         image_map = defaultdict()
         just_file = os.path.basename(pts_path)
