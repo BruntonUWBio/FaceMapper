@@ -105,7 +105,11 @@ class XmlTransformer:  # CSV File in Disguise
                             image_map[filename][ind].append(x)
                             image_map[filename][ind].append(y)
                         j += 1
-                    image_map[filename]['bb'] = self.bb(image_map[filename])
+                    all_pts = []
+                    for ind in image_map[filename].keys():
+                        all_pts.append(image_map[filename][ind][0])
+                        all_pts.append(image_map[filename][ind][1])
+                    image_map[filename]['bb'] = self.bb(all_pts)
         return self.make_image_list(image_map, csv=True)
 
     def pts_to_xml(self, pts_path):
