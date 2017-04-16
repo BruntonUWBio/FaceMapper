@@ -94,17 +94,19 @@ class XmlTransformer:  # CSV File in Disguise
                     first_row = row
                 else:
                     filename = split_path + '/' + row[0]
-                    image_map[filename] = []
+                    image_map[filename] = defaultdict()
                     j = 1
                     for i in range(2, len(row), 3):
                         ind = first_row.index(self.landmark_map[j])
-                        x = str(abs(int(float(row[ind]))))
-                        y = str(abs(int(float(row[ind + 1]))))
-                        image_map[filename].append(x)
-                        image_map[filename].append(y)
+                        if int(row[ind + 2]) == 0:
+                            x = str(abs(int(float(row[ind]))))
+                            y = str(abs(int(float(row[ind + 1]))))
+                            image_map[filename][ind] = []
+                            image_map[filename][ind].append(x)
+                            image_map[filename][ind].append(y)
                         j += 1
-                    image_map[filename].insert(0, self.bb(image_map[filename]))
-        return self.make_image_list(image_map)
+                    image_map[filename]['bb'] = self.bb(image_map[filename])
+        return self.make_csv_image_list(image_map)
 
     def pts_to_xml(self, pts_path):
         pt_file = open(pts_path, 'r+')
@@ -133,6 +135,37 @@ class XmlTransformer:  # CSV File in Disguise
             image_map[filename].append(y)
         image_map[filename].insert(0, self.bb(image_map[filename]))
         return self.make_image_list(image_map)
+
+    @staticmethod
+    def make_csv_image_list(image_map):
+        image_list = defaultdict()
+        images = ET.Element('images')
+        for index, file in enumerate(image_map.keys()):
+            e = ET.SubElement(images, 'image', {'file': '{0}'.format(file)})
+            image_list[e] = {}
+            coord_dict = image_map[file]
+            bb = coord_dict['bb'].astype(int)
+            bbox = ET.SubElement(e,
+                                 'box',
+                                 {
+                                     'top': '{0}'.format(bb[0][1]),
+                                     'left': '{0}'.format(bb[0][0]),
+                                     'width': '{0}'.format(bb[1][0] - bb[0][0]),
+                                     'height': '{0}'.format(bb[1][1] - bb[0][1])
+                                 })
+            image_list[e][bbox] = []
+            for ind in coord_dict.keys():
+                name = ''
+                if ind < 10:
+                    name = str('0' + str(j))
+                else:
+                    name = str(ind)
+                p = ET.SubElement(bbox, 'part',
+                                  {'name': '{0}'.format(name),
+                                   'x': '{0}'.format(coord_dict[ind][0]),
+                                   'y': '{0}'.format(coord_dict[ind][1])})
+                image_list[e][bbox].append(p)
+        return images
 
     @staticmethod
     def make_image_list(image_map):
@@ -185,8 +218,13 @@ class XmlTransformer:  # CSV File in Disguise
     def make_landmark_map(self):
         for i in range(1, 18):
             self.landmark_map[i] = 'J' + str(i)
-        for i in range(18, 28):
-            self.landmark_map[i] = 'E' + str(i - 17)
+        self.landmark_map[18] = 'E10'
+        self.landmark_map[19] = 'E9'
+        self.landmark_map[20] = 'E8'
+        self.landmark_map[21] = 'E7'
+        self.landmark_map[22] = 'E6'
+        for i in range(23, 28):
+            self.landmark_map[i] = 'E' + str(i - 22)
         for i in range(28, 37):
             self.landmark_map[i] = 'N' + str(i - 27)
         for i in range(37, 40):
