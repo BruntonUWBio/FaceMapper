@@ -98,7 +98,7 @@ class XmlTransformer:  # CSV File in Disguise
                     j = 1
                     for i in range(2, len(row), 3):
                         ind = first_row.index(self.landmark_map[j])
-                        if int(row[ind + 2]) == 0:
+                        if int(float(row[ind + 2])) == 0:
                             x = str(abs(int(float(row[ind]))))
                             y = str(abs(int(float(row[ind + 1]))))
                             image_map[filename][ind] = []
@@ -106,7 +106,7 @@ class XmlTransformer:  # CSV File in Disguise
                             image_map[filename][ind].append(y)
                         j += 1
                     image_map[filename]['bb'] = self.bb(image_map[filename])
-        return self.make_csv_image_list(image_map)
+        return self.make_image_list(image_map, csv=True)
 
     def pts_to_xml(self, pts_path):
         pt_file = open(pts_path, 'r+')
@@ -136,69 +136,68 @@ class XmlTransformer:  # CSV File in Disguise
         image_map[filename].insert(0, self.bb(image_map[filename]))
         return self.make_image_list(image_map)
 
-    @staticmethod
-    def make_csv_image_list(image_map):
-        image_list = defaultdict()
-        images = ET.Element('images')
-        for index, file in enumerate(image_map.keys()):
-            e = ET.SubElement(images, 'image', {'file': '{0}'.format(file)})
-            image_list[e] = {}
-            coord_dict = image_map[file]
-            bb = coord_dict['bb'].astype(int)
-            bbox = ET.SubElement(e,
-                                 'box',
-                                 {
-                                     'top': '{0}'.format(bb[0][1]),
-                                     'left': '{0}'.format(bb[0][0]),
-                                     'width': '{0}'.format(bb[1][0] - bb[0][0]),
-                                     'height': '{0}'.format(bb[1][1] - bb[0][1])
-                                 })
-            image_list[e][bbox] = []
-            for ind in coord_dict.keys():
-                name = ''
-                if ind < 10:
-                    name = str('0' + str(j))
-                else:
-                    name = str(ind)
-                p = ET.SubElement(bbox, 'part',
-                                  {'name': '{0}'.format(name),
-                                   'x': '{0}'.format(coord_dict[ind][0]),
-                                   'y': '{0}'.format(coord_dict[ind][1])})
-                image_list[e][bbox].append(p)
-        return images
+
 
     @staticmethod
-    def make_image_list(image_map):
+    def make_image_list(image_map, csv=False):
         image_list = defaultdict()
         images = ET.Element('images')
-        for index, file in enumerate(image_map.keys()):
-            e = ET.SubElement(images, 'image', {'file': '{0}'.format(file)})
-            image_list[e] = {}
-            coord_list = image_map[file]
-            bb = coord_list[0].astype(int)
-            bbox = ET.SubElement(e,
-                                 'box',
-                                 {
-                                     'top': '{0}'.format(bb[0][1]),
-                                     'left': '{0}'.format(bb[0][0]),
-                                     'width': '{0}'.format(bb[1][0] - bb[0][0]),
-                                     'height': '{0}'.format(bb[1][1] - bb[0][1])
-                                 })
-            image_list[e][bbox] = []
-            j = 0
-            for i in range(1, len(coord_list), 2):
-                name = ''
-                if j < 10:
-                    name = str('0' + str(j))
-                else:
-                    name = str(j)
-                p = ET.SubElement(bbox, 'part',
-                                  {'name': '{0}'.format(name),
-                                   'x': '{0}'.format(coord_list[i]),
-                                   'y': '{0}'.format(coord_list[i + 1])})
-                image_list[e][bbox].append(p)
-                j += 1
-        return images
+        if not csv:
+            for index, file in enumerate(image_map.keys()):
+                e = ET.SubElement(images, 'image', {'file': '{0}'.format(file)})
+                image_list[e] = {}
+                coord_list = image_map[file]
+                bb = coord_list[0].astype(int)
+                bbox = ET.SubElement(e,
+                                     'box',
+                                     {
+                                         'top': '{0}'.format(bb[0][1]),
+                                         'left': '{0}'.format(bb[0][0]),
+                                         'width': '{0}'.format(bb[1][0] - bb[0][0]),
+                                         'height': '{0}'.format(bb[1][1] - bb[0][1])
+                                     })
+                image_list[e][bbox] = []
+                j = 0
+                for i in range(1, len(coord_list), 2):
+                    name = ''
+                    if j < 10:
+                        name = str('0' + str(j))
+                    else:
+                        name = str(j)
+                    p = ET.SubElement(bbox, 'part',
+                                      {'name': '{0}'.format(name),
+                                       'x': '{0}'.format(coord_list[i]),
+                                       'y': '{0}'.format(coord_list[i + 1])})
+                    image_list[e][bbox].append(p)
+                    j += 1
+            return images
+        else:
+            for index, file in enumerate(image_map.keys()):
+                e = ET.SubElement(images, 'image', {'file': '{0}'.format(file)})
+                image_list[e] = {}
+                coord_dict = image_map[file]
+                bb = coord_dict['bb'].astype(int)
+                bbox = ET.SubElement(e,
+                                     'box',
+                                     {
+                                         'top': '{0}'.format(bb[0][1]),
+                                         'left': '{0}'.format(bb[0][0]),
+                                         'width': '{0}'.format(bb[1][0] - bb[0][0]),
+                                         'height': '{0}'.format(bb[1][1] - bb[0][1])
+                                     })
+                image_list[e][bbox] = []
+                for ind in coord_dict.keys():
+                    name = ''
+                    if ind < 10:
+                        name = str('0' + str(ind))
+                    else:
+                        name = str(ind)
+                    p = ET.SubElement(bbox, 'part',
+                                      {'name': '{0}'.format(name),
+                                       'x': '{0}'.format(coord_dict[ind][0]),
+                                       'y': '{0}'.format(coord_dict[ind][1])})
+                    image_list[e][bbox].append(p)
+            return images
 
     def indent(self, elem, level=0):
         i = "\n" + level * "  "
