@@ -107,7 +107,6 @@ class XmlTransformer:  # CSV File in Disguise
         return self.make_image_list(image_map)
 
     def pts_to_xml(self, pts_path):
-        print(pts_path)
         pt_file = open(pts_path, 'r+')
         s = pt_file.read()
         split_lines = s.splitlines()[3:]
