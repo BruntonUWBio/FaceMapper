@@ -192,7 +192,7 @@ class XmlTransformer:  # CSV File in Disguise
                 image_list[e][bbox] = []
                 for ind in coord_dict.keys():
                     name = ''
-                    if ind < 10:
+                    if int(ind) < 10:
                         name = str('0' + str(ind))
                     else:
                         name = str(ind)
