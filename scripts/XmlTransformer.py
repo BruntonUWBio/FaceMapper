@@ -39,7 +39,7 @@ class XmlTransformer:  # CSV File in Disguise
         test_data = ET.Element('dataset')
         test_images = ET.SubElement(test_data, 'images')
 
-        tree.write(path + 'training_with_face_landmarks.xml', encoding='ISO-8859-1', xml_declaration=True)
+        tree.write(path + '/' + 'training_with_face_landmarks.xml', encoding='ISO-8859-1', xml_declaration=True)
         rand = random.randrange(10)
         for index, image in enumerate(self.data):
             for file in list(image):
@@ -51,7 +51,7 @@ class XmlTransformer:  # CSV File in Disguise
                 for box in list(file):
                     for part in list(box):
                         box.remove(part)
-        tree.write(path + 'training.xml', encoding='ISO-8859-1', xml_declaration=True)
+        tree.write(path + '/' 'training.xml', encoding='ISO-8859-1', xml_declaration=True)
 
         pi_fake = copy.deepcopy(pi)
         test_fake_tree = ET.Element(None)
@@ -60,9 +60,9 @@ class XmlTransformer:  # CSV File in Disguise
         self.indent(test_fake_tree)
         test_tree = ET.ElementTree(test_fake_tree)
 
-        test_tree.write(path + 'testing_with_face_landmarks.xml', encoding='ISO-8859-1', xml_declaration=True)
+        test_tree.write(path + '/' + 'testing_with_face_landmarks.xml', encoding='ISO-8859-1', xml_declaration=True)
         self.remove_parts(test_data)
-        test_tree.write(path + 'testing.xml', encoding='ISO-8859-1', xml_declaration=True)
+        test_tree.write(path + '/' 'testing.xml', encoding='ISO-8859-1', xml_declaration=True)
 
     def remove_parts(self, data):
         for index, image in enumerate(data):
