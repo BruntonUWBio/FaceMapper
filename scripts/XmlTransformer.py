@@ -40,6 +40,7 @@ class XmlTransformer:  # CSV File in Disguise
         test_images = ET.SubElement(test_data, 'images')
 
         tree.write(path + '/' + 'training_with_face_landmarks.xml', encoding='ISO-8859-1', xml_declaration=True)
+
         rand = random.randrange(10)
         for index, image in enumerate(self.data):
             for file in list(image):
@@ -47,20 +48,18 @@ class XmlTransformer:  # CSV File in Disguise
                     rand = random.randrange(10)
                 if index % 10 == rand:
                     self.images.remove(file)
-                    test_images.append(file)
+                    test_images.append(copy.deepcopy(file))
                 for box in list(file):
                     for part in list(box):
                         box.remove(part)
-        tree.write(path + '/' 'training.xml', encoding='ISO-8859-1', xml_declaration=True)
-
         pi_fake = copy.deepcopy(pi)
         test_fake_tree = ET.Element(None)
-        test_fake_tree.append(pi)
+        test_fake_tree.append(pi_fake)
         test_fake_tree.append(test_data)
         self.indent(test_fake_tree)
         test_tree = ET.ElementTree(test_fake_tree)
-
         test_tree.write(path + '/' + 'testing_with_face_landmarks.xml', encoding='ISO-8859-1', xml_declaration=True)
+        tree.write(path + '/' 'training.xml', encoding='ISO-8859-1', xml_declaration=True)
         self.remove_parts(test_data)
         test_tree.write(path + '/' 'testing.xml', encoding='ISO-8859-1', xml_declaration=True)
 
@@ -184,7 +183,7 @@ class XmlTransformer:  # CSV File in Disguise
                 e = ET.SubElement(images, 'image', {'file': '{0}'.format(file)})
                 image_list[e] = {}
                 coord_dict = image_map[file]
-                if coord_dict['bb'] != None:
+                if coord_dict['bb'] is not None:
                     bb = coord_dict['bb'].astype(int)
                     bbox = ET.SubElement(e,
                                          'box',
