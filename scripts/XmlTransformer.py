@@ -81,7 +81,10 @@ class XmlTransformer:  # CSV File in Disguise
 
     @staticmethod
     def bb(points):
-        return Utilities.BBox.fromPoints([(points[i], points[i + 1]) for i in range(0, len(points), 2)])
+        try:
+            return Utilities.BBox.fromPoints([(points[i], points[i + 1]) for i in range(0, len(points), 2)])
+        except ValueError:
+            pass
 
     def csv_to_xml(self, csv_path):
         image_map = defaultdict()
@@ -95,20 +98,21 @@ class XmlTransformer:  # CSV File in Disguise
                 else:
                     filename = split_path + '/' + row[0]
                     image_map[filename] = defaultdict()
-                    j = 1
+                    j = 0
                     for i in range(2, len(row), 3):
-                        ind = first_row.index(self.landmark_map[j])
+                        part_num = self.landmark_map[j]
+                        ind = first_row.index(part_num)
                         if int(float(row[ind + 2])) == 0:
                             x = str(abs(int(float(row[ind]))))
                             y = str(abs(int(float(row[ind + 1]))))
-                            image_map[filename][ind] = []
-                            image_map[filename][ind].append(x)
-                            image_map[filename][ind].append(y)
+                            image_map[filename][j] = []
+                            image_map[filename][j].append(x)
+                            image_map[filename][j].append(y)
                         j += 1
                     all_pts = []
                     for ind in image_map[filename].keys():
-                        all_pts.append(image_map[filename][ind][0])
-                        all_pts.append(image_map[filename][ind][1])
+                        all_pts.append(int(image_map[filename][ind][0]))
+                        all_pts.append(int(image_map[filename][ind][1]))
                     image_map[filename]['bb'] = self.bb(all_pts)
         return self.make_image_list(image_map, csv=True)
 
@@ -180,29 +184,30 @@ class XmlTransformer:  # CSV File in Disguise
                 e = ET.SubElement(images, 'image', {'file': '{0}'.format(file)})
                 image_list[e] = {}
                 coord_dict = image_map[file]
-                bb = coord_dict['bb'].astype(int)
-                bbox = ET.SubElement(e,
-                                     'box',
-                                     {
-                                         'top': '{0}'.format(bb[0][1]),
-                                         'left': '{0}'.format(bb[0][0]),
-                                         'width': '{0}'.format(bb[1][0] - bb[0][0]),
-                                         'height': '{0}'.format(bb[1][1] - bb[0][1])
-                                     })
-                image_list[e][bbox] = []
-                for ind in coord_dict.keys():
-                    if ind != 'bb':
-                        name = ''
-                        if ind < 10:
-                            name = str('0' + str(ind))
-                        else:
-                            name = str(ind)
-                        p = ET.SubElement(bbox, 'part',
-                                          {'name': '{0}'.format(name),
-                                           'x': '{0}'.format(coord_dict[ind][0]),
-                                           'y': '{0}'.format(coord_dict[ind][1])})
-                        image_list[e][bbox].append(p)
-            return images
+                if coord_dict['bb'] != None:
+                    bb = coord_dict['bb'].astype(int)
+                    bbox = ET.SubElement(e,
+                                         'box',
+                                         {
+                                             'top': '{0}'.format(bb[0][1]),
+                                             'left': '{0}'.format(bb[0][0]),
+                                             'width': '{0}'.format(bb[1][0] - bb[0][0]),
+                                             'height': '{0}'.format(bb[1][1] - bb[0][1])
+                                         })
+                    image_list[e][bbox] = []
+                    for ind in coord_dict.keys():
+                        if ind != 'bb':
+                            name = ''
+                            if int(ind) < 10:
+                                name = str('0' + str(ind))
+                            else:
+                                name = str(ind)
+                            p = ET.SubElement(bbox, 'part',
+                                              {'name': '{0}'.format(name),
+                                               'x': '{0}'.format(coord_dict[ind][0]),
+                                               'y': '{0}'.format(coord_dict[ind][1])})
+                            image_list[e][bbox].append(p)
+                return images
 
     def indent(self, elem, level=0):
         i = "\n" + level * "  "
@@ -220,42 +225,42 @@ class XmlTransformer:  # CSV File in Disguise
                 elem.tail = i
 
     def make_landmark_map(self):
-        for i in range(1, 18):
-            self.landmark_map[i] = 'J' + str(i)
-        self.landmark_map[18] = 'E10'
-        self.landmark_map[19] = 'E9'
-        self.landmark_map[20] = 'E8'
-        self.landmark_map[21] = 'E7'
-        self.landmark_map[22] = 'E6'
-        for i in range(23, 28):
-            self.landmark_map[i] = 'E' + str(i - 22)
-        for i in range(28, 37):
-            self.landmark_map[i] = 'N' + str(i - 27)
-        for i in range(37, 40):
-            self.landmark_map[i] = 'RE' + str(i - 36)
-        self.landmark_map[40] = 'RE6'
-        self.landmark_map[41] = 'RE5'
-        self.landmark_map[42] = 'RE4'
-        for i in range(43, 46):
-            self.landmark_map[i] = 'LE' + str(i - 42)
-        self.landmark_map[46] = 'LE6'
-        self.landmark_map[47] = 'LE5'
-        self.landmark_map[48] = 'LE4'
-        for i in range(49, 56):
-            self.landmark_map[i] = 'M' + str(i - 48)
-        self.landmark_map[56] = 'M10'
-        self.landmark_map[57] = 'M9'
-        self.landmark_map[58] = 'M8'
-        self.landmark_map[59] = 'M7'
-        self.landmark_map[60] = 'M6'
-        self.landmark_map[61] = 'M11'
-        self.landmark_map[62] = 'M12'
-        self.landmark_map[63] = 'M13'
-        self.landmark_map[64] = 'M14'
-        self.landmark_map[65] = 'M20'
-        self.landmark_map[66] = 'M19'
-        self.landmark_map[67] = 'M18'
-        self.landmark_map[68] = 'M16'
+        for i in range(0, 17):
+            self.landmark_map[i] = 'J' + str(i + 1)
+        self.landmark_map[17] = 'E10'
+        self.landmark_map[18] = 'E9'
+        self.landmark_map[19] = 'E8'
+        self.landmark_map[20] = 'E7'
+        self.landmark_map[21] = 'E6'
+        for i in range(22, 27):
+            self.landmark_map[i] = 'E' + str(i - 21)
+        for i in range(27, 36):
+            self.landmark_map[i] = 'N' + str(i - 26)
+        for i in range(36, 39):
+            self.landmark_map[i] = 'RE' + str(i - 35)
+        self.landmark_map[39] = 'RE6'
+        self.landmark_map[40] = 'RE5'
+        self.landmark_map[41] = 'RE4'
+        for i in range(42, 45):
+            self.landmark_map[i] = 'LE' + str(i - 41)
+        self.landmark_map[45] = 'LE6'
+        self.landmark_map[46] = 'LE5'
+        self.landmark_map[47] = 'LE4'
+        for i in range(48, 55):
+            self.landmark_map[i] = 'M' + str(i - 47)
+        self.landmark_map[55] = 'M10'
+        self.landmark_map[56] = 'M9'
+        self.landmark_map[57] = 'M8'
+        self.landmark_map[58] = 'M7'
+        self.landmark_map[59] = 'M6'
+        self.landmark_map[60] = 'M11'
+        self.landmark_map[61] = 'M12'
+        self.landmark_map[62] = 'M13'
+        self.landmark_map[63] = 'M14'
+        self.landmark_map[64] = 'M20'
+        self.landmark_map[65] = 'M19'
+        self.landmark_map[66] = 'M18'
+        self.landmark_map[67] = 'M16'
 
 
 if __name__ == '__main__':
