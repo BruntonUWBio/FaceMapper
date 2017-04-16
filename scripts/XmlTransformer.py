@@ -73,11 +73,9 @@ class XmlTransformer:  # CSV File in Disguise
 
     def append_data(self, path):
         for file in glob.iglob(path + '/**/*.csv', recursive=True):
-            print(file)
             for image in self.csv_to_xml(file):
                 self.images.append(image)
         for file in glob.iglob(path + '/**/*.pts', recursive=True):
-            print(file)
             for image in self.pts_to_xml(file):
                 self.images.append(image)
 
@@ -109,6 +107,7 @@ class XmlTransformer:  # CSV File in Disguise
         return self.make_image_list(image_map)
 
     def pts_to_xml(self, pts_path):
+        print(pts_path)
         pt_file = open(pts_path, 'r+')
         s = pt_file.read()
         split_lines = s.splitlines()[3:]
