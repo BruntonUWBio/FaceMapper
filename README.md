@@ -14,3 +14,6 @@ Right double click on canvas to mark all selections as guess <br />
 
 Requires:
 - ffmpeg (for video processing)
+
+Scripts
+- XMLTransformer turns a CSV (outputted by FaceMapperFrame) or a .pts file into an xml format usable by Dlib

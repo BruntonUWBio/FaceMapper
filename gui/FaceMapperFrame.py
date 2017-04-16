@@ -417,7 +417,7 @@ class FaceMapperFrame(wx.Frame):
 
     # Save coordinates to a csv file
     def save(self, path):
-        writer = csv.writer(open(path, 'w'))
+        writer = csv.writer(open(path + '.csv', 'w'))
         first_row = [' ', ' ']
         for faceNum in self.default_face_nums:
             first_row.append(faceNum)
