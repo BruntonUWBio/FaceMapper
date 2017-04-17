@@ -21,8 +21,8 @@ IMAGE_FORMATS = [".jpg", ".png", ".ppm", ".pgm", ".gif", ".tif", ".tiff", ".jpe"
 class FaceMapperFrame(wx.Frame):
     def __init__(self, parent, id, name, image_dir, n_points=None, scale=1.0, is_video=False, csv_path=None):
         wx.Frame.__init__(self, parent, id, name)
+        self.smart_dlg = None
         if not csv_path:
-            self.smart_dlg = None
             if not is_video:
                 smart_or_dumb_dlg = wx.SingleChoiceDialog(None, message='Please select a frames method',
                                                           caption='Frame Method',
@@ -58,7 +58,7 @@ class FaceMapperFrame(wx.Frame):
             else:
                 self.image_dir = image_dir
         else:
-            self.image_dir = os.path.basename(csv_path)
+            self.image_dir = os.path.dirname(csv_path)
         self.n_points = n_points
         self.ssim_threshold = .85
         self.image_names = []
@@ -353,7 +353,7 @@ class FaceMapperFrame(wx.Frame):
                         self.coordMatrix[index, ind, 0:2] = point
                         self.coordMatrix[index, ind, 2] = 0
                 numRows += 1
-            self.select_im(numRows - 1)
+            self.select_im(numRows - 2)
     # Triggers on pressing "save and continue"
     def on_button_save(self, event):
         self.emotion_select()
@@ -458,7 +458,7 @@ class FaceMapperFrame(wx.Frame):
             self.emotion_dict[self.image_names[index]] = ['None selected']
 
     def select_im(self, index):
-        self.imageIndex = index
+        self.updateIndex(index)
         for i in range(len(self.image_names)):
             if i == index:
                 for circle in self.coordMatrix[i,]:
@@ -466,7 +466,11 @@ class FaceMapperFrame(wx.Frame):
                         circle[2] = 0
         self.mirror_im(event=None, should_save=False, check_ssim_if_smart=False)
 
-    # Triggers on selecting a face part
+    def updateIndex(self, index):
+        self.imageIndex = index
+        self.image_name = self.image_names[self.imageIndex]
+
+        # Triggers on selecting a face part
     def color_select(self, event):
         list_dlg = wx.SingleChoiceDialog(self, message="Choose an option", caption="list option",
                                          choices=['Reset Num', 'Choose Color'])
@@ -1024,11 +1028,12 @@ if __name__ == '__main__':
         csv_file_path = args[args.index('csv') + 1]
     app = wx.App(False)
     scale = 1.0
+    frame = None
     if not csv_file_path:
         type_dialog = wx.SingleChoiceDialog(None, message="Options", caption="Select either",
                                             choices=["video", "image directory"])
         choice = type_dialog.ShowModal()
-        frame = None
+
 
         if choice == wx.ID_OK:
             if type_dialog.GetStringSelection() == "image directory":
@@ -1055,8 +1060,8 @@ if __name__ == '__main__':
                 print("Video", video)
 
                 frame = FaceMapperFrame(None, wx.ID_ANY, "FaceMapper", video, n_points=None, scale=scale, is_video=True)
-        else:
-            frame = FaceMapperFrame(None, wx.ID_ANY, "FaceMapper", None, n_points=None, scale=scale, is_video=True,
-                                    csv_path=csv_file_path)
-        frame.Show(True)
-        app.MainLoop()
+    else:
+        frame = FaceMapperFrame(None, wx.ID_ANY, "FaceMapper", None, n_points=None, scale=scale, is_video=True,
+                                csv_path=csv_file_path)
+    frame.Show(True)
+    app.MainLoop()

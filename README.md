@@ -12,6 +12,9 @@ CTRL + Click on a dot to select all dots of that part <br />
 Double-click on a dot to mark/unmark as guess <br />
 Right double click on canvas to mark all selections as guess <br />
 
+Command line tools:
+- "csv %path/to/csv" will open from a pre-existing file inside of an image directory
+
 Requires:
 - ffmpeg (for video processing)
 
