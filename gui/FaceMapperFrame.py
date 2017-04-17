@@ -615,9 +615,10 @@ class FaceMapperFrame(wx.Frame):
         pre_size_coords = hitCircle.XY
         diff_coords = (new_coord - pre_size_coords[1]) * .1 + abs(circle.WH)
         diff = diff_coords[0] + diff_coords[1]
-        index = self.find_circle_coord_ind(pre_size_coords)
-        self.coordMatrix[self.imageIndex, index, 3] = diff
-        circle.SetDiameter(diff)
+        if diff > 0:
+            index = self.find_circle_coord_ind(pre_size_coords)
+            self.coordMatrix[self.imageIndex, index, 3] = diff
+            circle.SetDiameter(diff)
 
     # Triggers when hovering over circle
     def circle_hover(self, circle):
