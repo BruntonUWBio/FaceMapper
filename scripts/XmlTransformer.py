@@ -15,13 +15,16 @@ from wx.lib.floatcanvas import NavCanvas, FloatCanvas, Utilities
 
 class XmlTransformer:  # CSV File in Disguise
     def __init__(self):
-        if len(sys.argv) != 2:
+        if len(sys.argv) < 2:
             print(
                 'First argument is path')
             sys.exit()
         arg_list = sys.argv[1:]
         path = arg_list[0]
+        self.include_guess = False
         # output_path = arg_list[1]
+        if '-g' in arg_list:
+            self.include_guess = True
         first_row = []
         self.landmark_map = defaultdict()
         self.make_landmark_map()
@@ -101,7 +104,7 @@ class XmlTransformer:  # CSV File in Disguise
                     for i in range(2, len(row), 3):
                         part_num = self.landmark_map[j]
                         ind = first_row.index(part_num)
-                        if int(float(row[ind + 2])) == 0:
+                        if int(float(row[ind + 2])) == 0 or self.include_guess == True:
                             x = str(abs(int(float(row[ind]))))
                             y = str(abs(int(float(row[ind + 1]))))
                             image_map[filename][j] = []
