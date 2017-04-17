@@ -5,6 +5,7 @@ import math
 import os
 import os.path
 from collections import defaultdict, OrderedDict
+import sys
 
 import cv2
 import numpy as np
@@ -18,42 +19,46 @@ IMAGE_FORMATS = [".jpg", ".png", ".ppm", ".pgm", ".gif", ".tif", ".tiff", ".jpe"
 
 
 class FaceMapperFrame(wx.Frame):
-    def __init__(self, parent, id, name, image_dir, n_points=None, scale=1.0, is_video=False):
+    def __init__(self, parent, id, name, image_dir, n_points=None, scale=1.0, is_video=False, csv_path=None):
         wx.Frame.__init__(self, parent, id, name)
-        self.smart_dlg = None
-        if not is_video:
-            smart_or_dumb_dlg = wx.SingleChoiceDialog(None, message='Please select a frames method',
-                                                      caption='Frame Method',
-                                                      choices=['Smart Frame Analysis',
-                                                               'Manual frame-by-frame'])
-            if smart_or_dumb_dlg.ShowModal() == wx.ID_OK:
-                if smart_or_dumb_dlg.GetSelection() == 0:
-                    self.smart_dlg = True
-
-        if is_video:
-            output_dlg = wx.DirDialog(None, message='Please select an output directory', defaultPath=image_dir)
-            if output_dlg.ShowModal() == wx.ID_OK:
+        if not csv_path:
+            self.smart_dlg = None
+            if not is_video:
                 smart_or_dumb_dlg = wx.SingleChoiceDialog(None, message='Please select a frames method',
                                                           caption='Frame Method',
                                                           choices=['Smart Frame Analysis',
-                                                                   'Manual frame # entry'])
+                                                                   'Manual frame-by-frame'])
                 if smart_or_dumb_dlg.ShowModal() == wx.ID_OK:
-                    self.image_dir = output_dlg.GetPath()
-                    if smart_or_dumb_dlg.GetSelection() == 'Manual frame # entry':
-                        frames_dlg = wx.TextEntryDialog(None, message='Please select frames per second', value='5')
-                        if frames_dlg.ShowModal() == wx.ID_OK:
-                            os.system('ffmpeg -i "{0}" -vf fps=1/{1} "{2}"'.format(image_dir, frames_dlg.GetValue(),
-                                                                                   self.image_dir + '/' + os.path.basename(
-                                                                                       image_dir)
-                                                                                   + '_out%03d.png'))
-                    else:
+                    if smart_or_dumb_dlg.GetSelection() == 0:
                         self.smart_dlg = True
-                        os.system('ffmpeg -i "{0}" -vf fps=1/{1} "{2}"'.format(image_dir, str(1), self.image_dir + '/'
-                                                                               + os.path.basename(
-                            image_dir) + '_out%03d.png'))
-        # ---------------- Basic Data -------------------
+
+            if is_video:
+                output_dlg = wx.DirDialog(None, message='Please select an output directory', defaultPath=image_dir)
+                if output_dlg.ShowModal() == wx.ID_OK:
+                    smart_or_dumb_dlg = wx.SingleChoiceDialog(None, message='Please select a frames method',
+                                                              caption='Frame Method',
+                                                              choices=['Smart Frame Analysis',
+                                                                       'Manual frame # entry'])
+                    if smart_or_dumb_dlg.ShowModal() == wx.ID_OK:
+                        self.image_dir = output_dlg.GetPath()
+                        if smart_or_dumb_dlg.GetSelection() == 'Manual frame # entry':
+                            frames_dlg = wx.TextEntryDialog(None, message='Please select frames per second', value='5')
+                            if frames_dlg.ShowModal() == wx.ID_OK:
+                                os.system('ffmpeg -i "{0}" -vf fps=1/{1} "{2}"'.format(image_dir, frames_dlg.GetValue(),
+                                                                                       self.image_dir + '/' + os.path.basename(
+                                                                                           image_dir)
+                                                                                       + '_out%03d.png'))
+                        else:
+                            self.smart_dlg = True
+                            os.system(
+                                'ffmpeg -i "{0}" -vf fps=1/{1} "{2}"'.format(image_dir, str(1), self.image_dir + '/'
+                                                                             + os.path.basename(
+                                    image_dir) + '_out%03d.png'))
+            # ---------------- Basic Data -------------------
+            else:
+                self.image_dir = image_dir
         else:
-            self.image_dir = image_dir
+            self.image_dir = os.path.basename(csv_path)
         self.n_points = n_points
         self.ssim_threshold = .85
         self.image_names = []
@@ -253,6 +258,10 @@ class FaceMapperFrame(wx.Frame):
                 abbr += split[i].strip()[0]
             for index in range(self.faceParts[facePart][1]):
                 self.default_face_nums.append(abbr + str(index + 1))
+
+        # mirror if opening
+        if csv_path:
+            self.open_csv_file(csv_path)
 
     #Resets face part values to their defaults
     def reset_face_part_values(self):
@@ -1008,38 +1017,45 @@ class FaceMapperFrame(wx.Frame):
         return last + 1
 
 if __name__ == '__main__':
+    args = sys.argv
+    csv_file_path = None
+    if 'csv' in args:
+        csv_file_path = args[args.index('csv') + 1]
     app = wx.App(False)
-    type_dialog = wx.SingleChoiceDialog(None, message="Options", caption="Select either",
-                                        choices=["video", "image directory"])
-    choice = type_dialog.ShowModal()
-    frame = None
-    if choice == wx.ID_OK:
-        if type_dialog.GetStringSelection() == "image directory":
-            dir_dialog = wx.DirDialog(None, message="Please select a directory that contains images.")
-            err = dir_dialog.ShowModal()
-            image_dir = '.'
-            if err == wx.ID_OK:
-                image_dir = dir_dialog.GetPath()
+    scale = 1.0
+    if not csv_file_path:
+        type_dialog = wx.SingleChoiceDialog(None, message="Options", caption="Select either",
+                                            choices=["video", "image directory"])
+        choice = type_dialog.ShowModal()
+        frame = None
+
+        if choice == wx.ID_OK:
+            if type_dialog.GetStringSelection() == "image directory":
+                dir_dialog = wx.DirDialog(None, message="Please select a directory that contains images.")
+                err = dir_dialog.ShowModal()
+                image_dir = '.'
+                if err == wx.ID_OK:
+                    image_dir = dir_dialog.GetPath()
+                else:
+                    print("Error getting path:", err)
+
+                print("Image Dir", image_dir)
+
+                frame = FaceMapperFrame(None, wx.ID_ANY, "FaceMapper", image_dir,
+                                        n_points=None, scale=scale, is_video=False)
             else:
-                print("Error getting path:", err)
+                file_dialog = wx.FileDialog(None, message="Please select a video file.")
+                err = file_dialog.ShowModal()
+                video = '.'
+                if err == wx.ID_OK:
+                    video = file_dialog.GetPath()
+                else:
+                    print("Error getting video file")
+                print("Video", video)
 
-            print("Image Dir", image_dir)
-            scale = 1.0
-
-            frame = FaceMapperFrame(None, wx.ID_ANY, "FaceMapper", image_dir,
-                                    n_points=None, scale=scale, is_video=False)
+                frame = FaceMapperFrame(None, wx.ID_ANY, "FaceMapper", video, n_points=None, scale=scale, is_video=True)
         else:
-            file_dialog = wx.FileDialog(None, message="Please select a video file.")
-            err = file_dialog.ShowModal()
-            video = '.'
-            if err == wx.ID_OK:
-                video = file_dialog.GetPath()
-            else:
-                print("Error getting video file")
-            print("Video", video)
-            scale = 1.0
-
-            frame = FaceMapperFrame(None, wx.ID_ANY, "FaceMapper", video, n_points=None, scale=scale, is_video=True)
-
+            frame = FaceMapperFrame(None, wx.ID_ANY, "FaceMapper", None, n_points=None, scale=scale, is_video=True,
+                                    csv_path=csv_file_path)
         frame.Show(True)
         app.MainLoop()
