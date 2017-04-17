@@ -347,6 +347,8 @@ class FaceMapperFrame(wx.Frame):
             self.select_im(numRows - 1)
     # Triggers on pressing "save and continue"
     def on_button_save(self, event):
+        self.emotion_select()
+        self.emotion_select(index=self.imageIndex + 1)
         i = self.image_names.index(self.image_name)
         if len(self.image_names) > 1:
             if self.image_name:
@@ -439,8 +441,12 @@ class FaceMapperFrame(wx.Frame):
         self.image_name = event.GetString()
         self.select_im(index=self.image_names.index(self.image_name))
 
-    def emotion_select(self, event=None):
-        self.emotion_dict[self.image_names[self.imageIndex]] = self.emotionList.GetSelections()
+    def emotion_select(self, event=None, index=None):
+        if index == None:
+            index = self.imageIndex
+        self.emotion_dict[self.image_names[index]] = self.emotionList.GetSelections()
+        if self.emotionList.GetSelections() == None:
+            self.emotion_dict[self.image_names[index]] = ['None selected']
 
     def select_im(self, index):
         self.imageIndex = index
