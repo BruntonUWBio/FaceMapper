@@ -324,23 +324,6 @@ class FaceMapperFrame(wx.Frame):
     def open_csv_file(self, path):
         with open(path, 'rt') as csvfile:
             reader = csv.reader(csvfile)
-        # coords = {}
-        # for row in reader:
-        #    filename = row[0]
-        #    row = row[1:]
-        #
-        #    if len(row) % 2 != 0:
-        #        print("Error Loading File")
-        #        raise TypeError("Odd number of values in this row")
-        #
-        #    points = []
-        #    for i in range(0, len(row), 2):
-        #        point = (float(row[i]), float(row[i + 1]))
-        #        points.append(point)
-
-        #    coords[filename] = points
-        # print("CSV File Data: ", coords)
-        # self.coords = coords
             numRows = 0
             for index, row in enumerate(reader):
                 filename = row[0]
@@ -429,7 +412,7 @@ class FaceMapperFrame(wx.Frame):
 
     # Save coordinates to a csv file
     def save(self, path):
-        writer = csv.writer(open(path + '.csv', 'w'))
+        writer = csv.writer(open(path if path[len(path) - 4:len(path)] == '.csv' else path + '.csv', 'w'))
         first_row = [' ', ' ']
         for faceNum in self.default_face_nums:
             first_row.append(faceNum)
@@ -454,9 +437,12 @@ class FaceMapperFrame(wx.Frame):
     def emotion_select(self, event=None, index=None):
         if index == None:
             index = self.imageIndex
-        self.emotion_dict[self.image_names[index]] = self.emotionList.GetSelections()
-        if self.emotionList.GetSelections() == None:
-            self.emotion_dict[self.image_names[index]] = ['None selected']
+        try:
+            self.emotion_dict[self.image_names[index]] = self.emotionList.GetSelections()
+            if self.emotionList.GetSelections() == None:
+                self.emotion_dict[self.image_names[index]] = ['None selected']
+        except:
+            pass
 
     def select_im(self, index):
         self.updateIndex(index)
