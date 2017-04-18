@@ -250,19 +250,19 @@ class XmlTransformer:  # CSV File in Disguise
         self.landmark_map[47] = 'LE4'
         for i in range(48, 55):
             self.landmark_map[i] = 'M' + str(i - 47)
-        self.landmark_map[55] = 'M10'
-        self.landmark_map[56] = 'M9'
+        self.landmark_map[55] = 'M6'
+        self.landmark_map[56] = 'M7'
         self.landmark_map[57] = 'M8'
-        self.landmark_map[58] = 'M7'
-        self.landmark_map[59] = 'M6'
+        self.landmark_map[58] = 'M9'
+        self.landmark_map[59] = 'M10'
         self.landmark_map[60] = 'M11'
         self.landmark_map[61] = 'M12'
         self.landmark_map[62] = 'M13'
         self.landmark_map[63] = 'M14'
-        self.landmark_map[64] = 'M20'
+        self.landmark_map[64] = 'M15'
         self.landmark_map[65] = 'M19'
         self.landmark_map[66] = 'M18'
-        self.landmark_map[67] = 'M16'
+        self.landmark_map[67] = 'M17'
 
 
 if __name__ == '__main__':
