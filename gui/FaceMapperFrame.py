@@ -179,8 +179,9 @@ class FaceMapperFrame(wx.Frame):
         self.counterList = wx.ListBox(self, wx.NewId(), style=wx.LC_REPORT | wx.SUNKEN_BORDER | wx.LB_SORT,
                                       name='Click on a category to change its color',
                                       choices=self.faceLabels)
+        frame_dir_name = os.path.dirname(sys.argv[0])
         # self.sample_image_canvas = FloatCanvas.FloatCanvas(self.counterBox, Debug=0, BackgroundColor="Black")
-        self.sampleImage = wx.Image('sample_face.PNG', wx.BITMAP_TYPE_ANY)
+        self.sampleImage = wx.Image(os.path.join(frame_dir_name, 'sample_face.PNG'), wx.BITMAP_TYPE_ANY)
         self.sampleImage = self.sampleImage.Scale((self.sampleImage.GetWidth() / 1.5),
                                                   (self.sampleImage.GetHeight() / 1.5))
         self.sample_image_bitmap = wx.StaticBitmap(self, wx.NewId(), self.sampleImage.ConvertToBitmap())
@@ -983,8 +984,8 @@ class FaceMapperFrame(wx.Frame):
 
     def is_null(self, circ_array, property):
         num = circ_array[self.coord_keys.index(property)]
-        bool = num == -1.0
-        return bool
+        test = num == -1.0
+        return test
 
     def curr_image_points(self, ind=None):
         if ind is None:
