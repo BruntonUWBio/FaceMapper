@@ -47,7 +47,11 @@ import os
 from os.path import join
 import dlib
 import glob
+from time import sleep
 from skimage import io
+import scipy
+from collections import defaultdict
+from scipy import misc
 
 if len(sys.argv) != 3:
     print(
@@ -66,15 +70,19 @@ faces_folder_path = sys.argv[2]
 detector = dlib.get_frontal_face_detector()
 predictor = dlib.shape_predictor(predictor_path)
 win = dlib.image_window()
+threshold = -.25
+
+if '-th' in sys.argv:
+    threshold=sys.argv[sys.argv.index('-th') + 1]
 
 file_types = ['*.jpg', '*.png']
 files = []
 for ext in file_types:
-    files.extend(glob.glob(join(faces_folder_path, ext)))
+    files.extend(glob.glob(join(faces_folder_path + '/**/', ext), recursive=True))
 
 for f in files:
     print("Processing file: {}".format(f))
-    img = io.imread(f)
+    img = misc.imread(f, mode='RGB')
 
     win.clear_overlay()
     win.set_image(img)
@@ -82,17 +90,24 @@ for f in files:
     # Ask the detector to find the bounding boxes of each face. The 1 in the
     # second argument indicates that we should upsample the image 1 time. This
     # will make everything bigger and allow us to detect more faces.
-    dets = detector(img, 1)
-    print("Number of faces detected: {}".format(len(dets)))
-    for k, d in enumerate(dets):
-        print("Detection {}: Left: {} Top: {} Right: {} Bottom: {}".format(
-            k, d.left(), d.top(), d.right(), d.bottom()))
-        # Get the landmarks/parts for the face in box d.
-        shape = predictor(img, d)
-        print("Part 0: {}, Part 1: {} ...".format(shape.part(0),
-                                                  shape.part(1)))
+    #dets = detector(img, 1)
+    #print("Number of faces detected: {}".format(len(dets)))
+
+    dets, scores, idx = detector.run(img, 1, -1)
+    scores_dict = defaultdict()
+    for i, d in enumerate(dets):
+        score = scores[i]
+        scores_dict[score] = [d, i, idx[i]]
+    max_score = max(list(scores_dict.keys()))
+    if max_score > threshold:
+        max_d = scores_dict[max_score][0]
+        max_i = scores_dict[max_score][1]
+        face_type = scores_dict[max_score][2]
+        print("Detection {}, score: {}, face_type:{}".format(
+            max_d, max_score, face_type))
+        shape = predictor(img, max_d)
+        print("Left: {} Top: {} Right: {} Bottom: {}".format(d.left(), d.top(), d.right(), d.bottom()))
         # Draw the face landmarks on the screen.
         win.add_overlay(shape)
-
-    win.add_overlay(dets)
-    dlib.hit_enter_to_continue()
+        win.add_overlay(max_d)
+        dlib.hit_enter_to_continue()
