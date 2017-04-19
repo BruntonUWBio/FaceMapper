@@ -181,7 +181,7 @@ class FaceMapperFrame(wx.Frame):
                                       choices=self.faceLabels)
         frame_dir_name = os.path.dirname(sys.argv[0])
         # self.sample_image_canvas = FloatCanvas.FloatCanvas(self.counterBox, Debug=0, BackgroundColor="Black")
-        self.sampleImage = wx.Image(os.path.join(frame_dir_name, 'sample_face.PNG'), wx.BITMAP_TYPE_ANY)
+        self.sampleImage = wx.Image(os.path.join(frame_dir_name, 'sample_face.png'), wx.BITMAP_TYPE_ANY)
         self.sampleImage = self.sampleImage.Scale((self.sampleImage.GetWidth() / 1.5),
                                                   (self.sampleImage.GetHeight() / 1.5))
         self.sample_image_bitmap = wx.StaticBitmap(self, wx.NewId(), self.sampleImage.ConvertToBitmap())
@@ -328,14 +328,14 @@ class FaceMapperFrame(wx.Frame):
             for index, row in enumerate(reader):
                 filename = row[0]
                 if filename in self.image_names:
-                    index = self.image_names.index(filename)
+                    file_index = self.image_names.index(filename)
                     points = []
                     self.emotion_dict[filename] = row[1].split(',')
                     for i in range(2, len(row), 3):
                         points.append(np.array([float(row[i]), float(row[i + 1])]))
                     for ind, point in enumerate(points):
-                        self.coordMatrix[index, ind, 0:2] = point
-                        self.coordMatrix[index, ind, 2] = 0
+                        self.coordMatrix[file_index, ind, 0:2] = point
+                        self.coordMatrix[file_index, ind, 2] = 0
                 numRows += 1
             self.select_im(numRows - 2)
     # Triggers on pressing "save and continue"
