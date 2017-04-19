@@ -209,7 +209,7 @@ class XmlTransformer:  # CSV File in Disguise
                                                'x': '{0}'.format(coord_dict[ind][0]),
                                                'y': '{0}'.format(coord_dict[ind][1])})
                             image_list[e][bbox].append(p)
-                return images
+        return images
 
     def indent(self, elem, level=0):
         i = "\n" + level * "  "
