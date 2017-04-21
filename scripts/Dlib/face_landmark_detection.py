@@ -66,7 +66,7 @@ if __name__ == '__main__':
     detector = dlib.get_frontal_face_detector()
     predictor = dlib.shape_predictor(predictor_path)
     win = dlib.image_window()
-    threshold = -.25
+    threshold = -1
     all = False
 
     if '-th' in sys.argv:
