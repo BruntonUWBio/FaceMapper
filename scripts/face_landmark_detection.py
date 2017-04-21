@@ -53,61 +53,72 @@ import scipy
 from collections import defaultdict
 from scipy import misc
 
-if len(sys.argv) != 3:
-    print(
-        "Give the path to the trained shape predictor model as the first "
-        "argument and then the directory containing the facial images.\n"
-        "For example, if you are in the python_examples folder then "
-        "execute this program by running:\n"
-        "    ./face_landmark_detection.py shape_predictor_68_face_landmarks.dat ../examples/faces\n"
-        "You can download a trained facial shape predictor from:\n"
-        "    http://dlib.net/files/shape_predictor_68_face_landmarks.dat.bz2")
-    exit()
 
-predictor_path = sys.argv[1]
-faces_folder_path = sys.argv[2]
+def overlay(win, shape, d):
+    win.add_overlay(shape)
+    win.add_overlay(d)
 
-detector = dlib.get_frontal_face_detector()
-predictor = dlib.shape_predictor(predictor_path)
-win = dlib.image_window()
-threshold = -.25
 
-if '-th' in sys.argv:
-    threshold=sys.argv[sys.argv.index('-th') + 1]
+if __name__ == '__main__':
+    predictor_path = sys.argv[1]
+    faces_folder_path = sys.argv[2]
 
-file_types = ['*.jpg', '*.png']
-files = []
-for ext in file_types:
-    files.extend(glob.glob(join(faces_folder_path + '/**/', ext), recursive=True))
+    detector = dlib.get_frontal_face_detector()
+    predictor = dlib.shape_predictor(predictor_path)
+    win = dlib.image_window()
+    threshold = -.25
+    all = False
 
-for f in files:
-    print("Processing file: {}".format(f))
-    img = misc.imread(f, mode='RGB')
+    if '-th' in sys.argv:
+        threshold = float(sys.argv[sys.argv.index('-th') + 1])
+    if '-a' in sys.argv:
+        all = True
 
-    win.clear_overlay()
-    win.set_image(img)
+    file_types = ['*.jpg', '*.png']
+    files = []
+    for ext in file_types:
+        files.extend(glob.glob(join(faces_folder_path + '/**/', ext), recursive=True))
 
-    # Ask the detector to find the bounding boxes of each face. The 1 in the
-    # second argument indicates that we should upsample the image 1 time. This
-    # will make everything bigger and allow us to detect more faces.
-    #dets = detector(img, 1)
-    #print("Number of faces detected: {}".format(len(dets)))
+    for f in files:
+        print("Processing file: {}".format(f))
+        img = misc.imread(f, mode='RGB')
+        detected = False
+        win.clear_overlay()
+        win.set_image(img)
 
-    dets, scores, idx = detector.run(img, 1, -1)
-    scores_dict = defaultdict()
-    for i, d in enumerate(dets):
-        score = scores[i]
-        scores_dict[score] = [d, i, idx[i]]
-    max_score = max(list(scores_dict.keys()))
-    if max_score > threshold:
-        max_d = scores_dict[max_score][0]
-        max_i = scores_dict[max_score][1]
-        face_type = scores_dict[max_score][2]
-        print("Detection {}, score: {}, face_type:{}".format(
-            max_d, max_score, face_type))
-        shape = predictor(img, max_d)
-        print("Left: {} Top: {} Right: {} Bottom: {}".format(d.left(), d.top(), d.right(), d.bottom()))
-        # Draw the face landmarks on the screen.
-        win.add_overlay(shape)
-        win.add_overlay(max_d)
-        dlib.hit_enter_to_continue()
+        # Ask the detector to find the bounding boxes of each face. The 1 in the
+        # second argument indicates that we should upsample the image 1 time. This
+        # will make everything bigger and allow us to detect more faces.
+        # dets = detector(img, 1)
+
+        dets, scores, idx = detector.run(img, 1, -1)
+        scores_dict = defaultdict()
+        print("Number of faces detected: {}".format(len(dets)))
+
+        for i, d in enumerate(dets):
+
+            score = scores[i]
+            scores_dict[score] = [d, i, idx[i]]
+            if all:
+                if score > threshold:
+                    print("Detection: {}, score: {}, face_type:{}".format(d, score, idx[i]))
+                    shape = predictor(img, d)
+                    print("Left: {} Top: {} Right: {} Bottom: {}".format(d.left(), d.top(), d.right(), d.bottom()))
+                    overlay(win, shape, d)
+                    detected = True
+        if detected:
+            dlib.hit_enter_to_continue()
+
+        if not all:
+            max_score = max(list(scores_dict.keys()))
+            if max_score > threshold:
+                max_d = scores_dict[max_score][0]
+                max_i = scores_dict[max_score][1]
+                face_type = scores_dict[max_score][2]
+                print("Detection {}, score: {}, face_type:{}".format(
+                    max_d, max_score, face_type))
+                shape = predictor(img, max_d)
+                print("Left: {} Top: {} Right: {} Bottom: {}".format(d.left(), d.top(), d.right(), d.bottom()))
+                # Draw the face landmarks on the screen.
+                overlay(win, shape, max_d)
+                dlib.hit_enter_to_continue()

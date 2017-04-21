@@ -1,4 +1,4 @@
-# Script for taking output from FaceMapperFrame (as a csv) and turning it into an xml for use to train Dlib
+# Script for taking output from FaceMapperFrame (as a csv) or a pts file and turning it into an xml for use to train Dlib
 
 
 import csv
@@ -8,17 +8,17 @@ import xml.etree.ElementTree as ET
 from collections import defaultdict
 import glob
 import random
-
+import numpy as np
 import copy
+import cv2
 from wx.lib.floatcanvas import NavCanvas, FloatCanvas, Utilities
 
 
 class XmlTransformer:  # CSV File in Disguise
     def __init__(self):
-        if len(sys.argv) < 2:
-            print(
-                'First argument is path')
-            sys.exit()
+        transform_image = False
+        if '-t' in sys.argv:
+            transform_image = True
         arg_list = sys.argv[1:]
         path = arg_list[0]
         self.include_guess = False
@@ -32,13 +32,14 @@ class XmlTransformer:  # CSV File in Disguise
         self.images = ET.SubElement(self.data, 'images')
         self.append_data(path)
         fake_tree = ET.Element(None)
+        if transform_image:
+            self.transform_images()
         pi = ET.PI("xml-stylesheet", "type='text/xsl' href='image_metadata_stylesheet.xsl'")
         pi.tail = "\n"
         fake_tree.append(pi)
         fake_tree.append(self.data)
         self.indent(fake_tree)
         tree = ET.ElementTree(fake_tree)
-
         test_data = ET.Element('dataset')
         test_images = ET.SubElement(test_data, 'images')
 
@@ -80,6 +81,28 @@ class XmlTransformer:  # CSV File in Disguise
         for file in glob.iglob(path + '/**/*.pts', recursive=True):
             for image in self.pts_to_xml(file):
                 self.images.append(image)
+
+    def transform_images(self):
+        for index, image in enumerate(self.data):
+            for file in list(image):
+                name = file.attrib['file']
+                dir_name = os.path.dirname(name)
+                base_name = os.path.basename(name)
+                split_name = os.path.splitext(base_name)
+                im = cv2.imread(str(name))
+                hsv = cv2.cvtColor(im, cv2.COLOR_BGR2HSV).astype("float64")
+                h, s, v = cv2.split(hsv)
+                change = random.randint(-25, 25)
+                v += np.float64(change)
+                v = np.clip(v, 0, 255)
+                final_hsv = cv2.merge((h, s, v))
+                im = cv2.cvtColor(final_hsv.astype("uint8"), cv2.COLOR_HSV2BGR)
+                new_name = split_name[0] + '_bchanged' + split_name[1]
+                cv2.imwrite(os.path.join(dir_name, new_name), im)
+                new_file = copy.deepcopy(file)
+                new_file.set('file', os.path.join(dir_name, new_name))
+                image.append(new_file)
+
 
     @staticmethod
     def bb(points):
@@ -209,7 +232,7 @@ class XmlTransformer:  # CSV File in Disguise
                                                'x': '{0}'.format(coord_dict[ind][0]),
                                                'y': '{0}'.format(coord_dict[ind][1])})
                             image_list[e][bbox].append(p)
-        return images
+            return images
 
     def indent(self, elem, level=0):
         i = "\n" + level * "  "
