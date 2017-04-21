@@ -26,8 +26,13 @@ Right double click on canvas to mark all selections as guess <br />
 XMLTransformer turns a CSV (outputted by FaceMapperFrame) or a .pts file into an xml format usable by Dlib
 ### Command Line Arguments
 - -g flag for including dots marked as guess in FaceMapper tool
-- -t flag transforms all images. Currently, it saves a copy of each image wth the brightness tweaked and adds 
-this to the training data. This argument is recommended for improving accuracy.
+#### -t flag
+- Saves copies of the following for each image:
+    - Image with brightness changed randomly
+    - Image shifted randomly <br />
+
+This option is highly recommended because coordinates are generated automatically and are added to the training set, 
+making the model better. 
 ## face_landmark_detection
 Contains some tweaks to Dlib's packaged face landmark detection script.
 ### Features

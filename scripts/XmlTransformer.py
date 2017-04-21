@@ -67,7 +67,8 @@ class XmlTransformer:  # CSV File in Disguise
         self.remove_parts(test_data)
         test_tree.write(path + '/' 'testing.xml', encoding='ISO-8859-1', xml_declaration=True)
 
-    def remove_parts(self, data):
+    @staticmethod
+    def remove_parts(data):
         for index, image in enumerate(data):
             for file in list(image):
                 for box in list(file):
@@ -90,19 +91,53 @@ class XmlTransformer:  # CSV File in Disguise
                 base_name = os.path.basename(name)
                 split_name = os.path.splitext(base_name)
                 im = cv2.imread(str(name))
-                hsv = cv2.cvtColor(im, cv2.COLOR_BGR2HSV).astype("float64")
-                h, s, v = cv2.split(hsv)
-                change = random.randint(-25, 25)
-                v += np.float64(change)
-                v = np.clip(v, 0, 255)
-                final_hsv = cv2.merge((h, s, v))
-                im = cv2.cvtColor(final_hsv.astype("uint8"), cv2.COLOR_HSV2BGR)
-                new_name = split_name[0] + '_bchanged' + split_name[1]
-                cv2.imwrite(os.path.join(dir_name, new_name), im)
-                new_file = copy.deepcopy(file)
-                new_file.set('file', os.path.join(dir_name, new_name))
-                image.append(new_file)
+                image.append(self.change_hsv(im, split_name, dir_name, file))
+                image.append(self.shift_im(im, split_name, dir_name, file))
 
+    def change_hsv(self, im, split_name, dir_name, file):
+        hsv = cv2.cvtColor(im, cv2.COLOR_BGR2HSV).astype("float64")
+        h, s, v = cv2.split(hsv)
+        change = random.randint(-25, 25)
+        v += np.float64(change)
+        v = np.clip(v, 0, 255)
+        final_hsv = cv2.merge((h, s, v))
+        im = cv2.cvtColor(final_hsv.astype("uint8"), cv2.COLOR_HSV2BGR)
+        new_file = self.make_new_im(im, split_name, dir_name, '_bchanged', file)
+        return new_file
+
+    def shift_im(self, im, split_name, dir_name, file):
+        rows, cols = im.shape[0:2]
+        x_change = random.randint(-50, 50)
+        y_change = random.randint(-70, 70)
+        M = np.float32([[1, 0, x_change], [0, 1, y_change]])
+        im = cv2.warpAffine(im, M, (cols, rows))
+        new_file = copy.deepcopy(file)
+        for box in list(new_file):
+            old_left = int(box.get('left'))
+            old_top = int(box.get('top'))
+            new_left, new_top = self.shift(old_left, old_top, x_change, y_change, rows, cols)
+            box.set('left', str(new_left))
+            box.set('top', str(new_top))
+            for part in list(box):
+                old_x = int(part.get('x'))
+                old_y = int(part.get('y'))
+                new_x, new_y = self.shift(old_x, old_y, x_change, y_change, rows, cols)
+                part.set('x', str(new_x))
+                part.set('y', str(new_y))
+        new_file = self.make_new_im(im, split_name, dir_name, '_shifted', new_file)
+        return new_file
+
+    def shift(self, x, y, x_change, y_change, rows, cols):
+        new_x = np.clip([x + x_change], 0, rows)[0]
+        new_y = np.clip([y + y_change], 0, cols)[0]
+        return [new_x, new_y]
+
+    def make_new_im(self, im, split_name, dir_name, addition, file):
+        new_name = split_name[0] + addition + split_name[1]
+        cv2.imwrite(os.path.join(dir_name, new_name), im)
+        new_file = copy.deepcopy(file)
+        new_file.set('file', os.path.join(dir_name, new_name))
+        return new_file
 
     @staticmethod
     def bb(points):
@@ -168,8 +203,6 @@ class XmlTransformer:  # CSV File in Disguise
             image_map[filename].append(y)
         image_map[filename].insert(0, self.bb(image_map[filename]))
         return self.make_image_list(image_map)
-
-
 
     @staticmethod
     def make_image_list(image_map, csv=False):
