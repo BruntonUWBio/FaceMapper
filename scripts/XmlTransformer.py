@@ -91,8 +91,11 @@ class XmlTransformer:  # CSV File in Disguise
                 base_name = os.path.basename(name)
                 split_name = os.path.splitext(base_name)
                 im = cv2.imread(str(name))
-                image.append(self.change_hsv(im, split_name, dir_name, file))
-                image.append(self.shift_im(im, split_name, dir_name, file))
+                if im is None:
+                    print(name + ' Does not exist')
+                else:
+                    image.append(self.change_hsv(im, split_name, dir_name, file))
+                    image.append(self.shift_im(im, split_name, dir_name, file))
 
     def change_hsv(self, im, split_name, dir_name, file):
         hsv = cv2.cvtColor(im, cv2.COLOR_BGR2HSV).astype("float64")
