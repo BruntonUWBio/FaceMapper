@@ -8,9 +8,12 @@ import xml.etree.ElementTree as ET
 from collections import defaultdict
 import glob
 import random
+
+import dlib
 import numpy as np
 import copy
 import cv2
+from scipy import misc
 from wx.lib.floatcanvas import NavCanvas, FloatCanvas, Utilities
 
 
@@ -19,6 +22,10 @@ class XmlTransformer:  # CSV File in Disguise
         transform_image = False
         if '-t' in sys.argv:
             transform_image = True
+        crop_image = False
+        if '-c' in sys.argv:
+            crop_image = True
+            crop_path = sys.argv[sys.argv.index('-c') + 1]
         arg_list = sys.argv[1:]
         path = arg_list[0]
         self.include_guess = False
@@ -32,6 +39,8 @@ class XmlTransformer:  # CSV File in Disguise
         self.images = ET.SubElement(self.data, 'images')
         self.append_data(path)
         fake_tree = ET.Element(None)
+        if crop_image:
+            self.crop_images(crop_path)
         if transform_image:
             self.transform_images()
         pi = ET.PI("xml-stylesheet", "type='text/xsl' href='image_metadata_stylesheet.xsl'")
@@ -82,6 +91,57 @@ class XmlTransformer:  # CSV File in Disguise
         for file in glob.iglob(path + '/**/*.pts', recursive=True):
             for image in self.pts_to_xml(file):
                 self.images.append(image)
+
+    def crop_images(self, crop_path):
+        for index, image in enumerate(self.data):
+            for file in list(image):
+                name = file.attrib['file']
+                dir_name = os.path.dirname(name)
+                base_name = os.path.basename(name)
+                split_name = os.path.splitext(base_name)
+                crop_file_path, file_num = self.find_crop_path(base_name, crop_path)
+                if crop_file_path is not None:
+                    f = open(crop_file_path)
+                    readArr = f.readlines()
+                    readArr = [readArr[i].split(',')[0:3] for i in range(0, len(readArr), 30)]
+                    for index, num in enumerate(readArr):
+                        for val_index, val in enumerate(num):
+                            readArr[index][val_index] = val.replace('(', '')
+                            val = readArr[index][val_index]
+                            readArr[index][val_index] = val.replace(')', '')
+                    readArr = [[float(k) for k in i] for i in readArr]
+
+                    for i in range(0, len(readArr)):
+                        if i == file_num:
+                            confidence = readArr[i][2]
+                            print(name)
+                            print(confidence)
+                            if confidence > .25:
+                                x_center = readArr[i][0]
+                                y_center = readArr[i][1]
+                                bb_size = 100
+                                xmin = int(x_center - bb_size)
+                                ymin = int(y_center - bb_size)
+                                xmax = int(x_center + bb_size)
+                                ymax = int(y_center + bb_size)
+                                im = cv2.imread(name)
+                                crop_im = im[ymin:ymax, xmin:xmax]
+                                new_name = split_name[0] + '_cropped' + split_name[1]
+                                cv2.imwrite(os.path.join(dir_name, new_name), crop_im)
+                                print(os.path.join(dir_name, new_name))
+                                file.set('file', os.path.join(dir_name, new_name))
+
+
+    def find_crop_path(self, file, crop_path):
+        parts = file.split('.')
+        pid = parts[0]
+        out_num = int(''.join(parts[1][parts[1].index('out') + 3: parts[1].index('out') + 6]))
+        out_file = None
+        for crop_file in glob.iglob(os.path.join(crop_path + '/**/*.txt'), recursive=True):
+            crop_file_name = os.path.splitext(os.path.basename(crop_file))[0]
+            if crop_file_name == pid:
+                out_file = crop_file
+        return out_file, out_num
 
     def transform_images(self):
         for index, image in enumerate(self.data):
@@ -159,27 +219,28 @@ class XmlTransformer:  # CSV File in Disguise
                 if index == 0:
                     first_row = row
                 else:
-                    filename = split_path + '/' + row[0]
-                    image_map[filename] = defaultdict()
-                    j = 0
-                    for i in range(2, len(row), 3):
-                        part_num = self.landmark_map[j]
-                        ind = first_row.index(part_num)
-                        try:
-                            if int(float(row[ind + 2])) == 0 or self.include_guess == True:
-                                x = str(abs(int(float(row[ind]))))
-                                y = str(abs(int(float(row[ind + 1]))))
-                                image_map[filename][j] = []
-                                image_map[filename][j].append(x)
-                                image_map[filename][j].append(y)
-                            j += 1
-                        except ValueError:
-                            print(csv_path + ' Has faulty encoding')
-                    all_pts = []
-                    for ind in image_map[filename].keys():
-                        all_pts.append(int(image_map[filename][ind][0]))
-                        all_pts.append(int(image_map[filename][ind][1]))
-                    image_map[filename]['bb'] = self.bb(all_pts)
+                    filename = os.path.join(split_path,row[0])
+                    if os.path.isfile(filename):
+                        image_map[filename] = defaultdict()
+                        j = 0
+                        for i in range(2, len(row), 3):
+                            part_num = self.landmark_map[j]
+                            ind = first_row.index(part_num)
+                            try:
+                                if int(float(row[ind + 2])) == 0 or self.include_guess == True:
+                                    x = str(abs(int(float(row[ind]))))
+                                    y = str(abs(int(float(row[ind + 1]))))
+                                    image_map[filename][j] = []
+                                    image_map[filename][j].append(x)
+                                    image_map[filename][j].append(y)
+                                j += 1
+                            except ValueError:
+                                print(csv_path + ' Has faulty encoding')
+                        all_pts = []
+                        for ind in image_map[filename].keys():
+                            all_pts.append(int(image_map[filename][ind][0]))
+                            all_pts.append(int(image_map[filename][ind][1]))
+                        image_map[filename]['bb'] = self.bb(all_pts)
         return self.make_image_list(image_map, csv=True)
 
     def pts_to_xml(self, pts_path):
