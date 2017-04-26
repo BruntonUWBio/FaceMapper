@@ -139,9 +139,10 @@ class XmlTransformer:  # CSV File in Disguise
                             crop_im = im[y_coords[0]:y_coords[1], x_coords[0]:x_coords[1]].copy()
                             new_name = split_name[0] + '_cropped' + split_name[1]
                             cv2.imwrite(os.path.join(dir_name, new_name), crop_im)
-                            print(os.path.join(dir_name, new_name))
-                            file.set('file', os.path.join(dir_name, new_name))
-                            self.shift_all_boxes(file, -1 * xmin, -1 * ymin, im.shape[0], im.shape[1])
+                            if os.path.isfile(os.path.join(dir_name, new_name)):
+                                print(os.path.join(dir_name, new_name))
+                                file.set('file', os.path.join(dir_name, new_name))
+                                self.shift_all_boxes(file, -1 * xmin, -1 * ymin, im.shape[0], im.shape[1])
                     else:
                         print('{0} out of range'.format(i))
 

@@ -54,6 +54,8 @@ from collections import defaultdict
 from scipy import misc
 import cv2
 import numpy as np
+import re
+from PIL import Image
 
 
 def overlay(win, shape, d):
@@ -61,27 +63,31 @@ def overlay(win, shape, d):
     win.add_overlay(d)
 
 
-def find_crop_path(file, crop_path):
+def find_crop_path(file, crop_path, crop_txt_files):
     parts = file.split('.')
     pid = parts[0]
-    out_num = int(''.join(parts[1][parts[1].index('out') + 3: parts[1].index('out') + 6]))
+    try:
+        back_half_name = ''.join(parts[1][parts[1].index('out') + 3: len(parts[1])])
+        out_num = int(re.sub("[^0-9]", "", back_half_name))
+    except ValueError:
+        return None, None
     out_file = None
     if pid in list(crop_txt_files.keys()):
         out_file = crop_txt_files[pid]
     return out_file, out_num
 
 
-def crop_predictor(img, d, crop_path, name):
+def crop_predictor(img, crop_path, name, crop_txt_files):
     print('Name: {0}'.format(name))
     dir_name = os.path.dirname(name)
     base_name = os.path.basename(name)
     split_name = os.path.splitext(base_name)
-    crop_file_path, file_num = find_crop_path(base_name, crop_path)
+    crop_file_path, file_num = find_crop_path(base_name, crop_path, crop_txt_files)
     print('Crop file: {0}'.format(crop_file_path))
     if crop_file_path is not None:
         f = open(crop_file_path)
         readArr = f.readlines()
-        readArr = [readArr[i].split(',')[0:3] for i in range(0, len(readArr), 30)]
+        readArr = [readArr[i].split(',')[0:3] for i in range(0, len(readArr), fps_frac)]
         for index, num in enumerate(readArr):
             for val_index, val in enumerate(num):
                 readArr[index][val_index] = val.replace('(', '')
@@ -101,14 +107,20 @@ def crop_predictor(img, d, crop_path, name):
                 ymin = int(y_center - bb_size)
                 xmax = int(x_center + bb_size)
                 ymax = int(y_center + bb_size)
-                im = misc.imread(name, mode='RGB')
+                im = img
                 x_coords = np.clip(np.array([xmin, xmax]), 0, im.shape[1])
                 y_coords = np.clip(np.array([ymin, ymax]), 0, im.shape[0])
                 xmin = x_coords[0]
                 xmax = x_coords[1]
                 ymin = y_coords[0]
                 ymax = y_coords[1]
+                # pil_im = Image.open(name)
+                # pil_im = pil_im.crop((xmin, ymin, xmax, ymax))
+                # new_file = os.path.join(dir_name, split_name[0] + '_cropped' + split_name[1])
+                # pil_im.save(new_file)
                 crop_im = im[y_coords[0]:y_coords[1], x_coords[0]:x_coords[1]].copy()
+                # crop_im = misc.imread(new_file, mode='RGB')
+                return [crop_im, xmin, ymin]
 
 if __name__ == '__main__':
     predictor_path = sys.argv[1]
@@ -118,20 +130,22 @@ if __name__ == '__main__':
     predictor = dlib.shape_predictor(predictor_path)
     win = dlib.image_window()
     threshold = -1
-    all = False
-    pause = False
-    crop = False
 
     if '-th' in sys.argv:
         threshold = float(sys.argv[sys.argv.index('-th') + 1])
     arg_dict = {
-        '-a': all,
-        '-p': pause,
-        '-c': crop
+        '-a': False,
+        '-p': False,
+        '-c': False,
+        '-f': 1
     }
     for arg in list(arg_dict.keys()):
         if arg in sys.argv:
             arg_dict[arg] = True
+    all = arg_dict['-a']
+    pause = arg_dict['-p']
+    crop = arg_dict['-c']
+    fps_frac = arg_dict['-f']
     if crop:
         crop_path = sys.argv[sys.argv.index('-c') + 1]
         crop_txt_files = {os.path.splitext(os.path.basename(v))[0]: v for v in
@@ -145,8 +159,18 @@ if __name__ == '__main__':
     files = sorted(files)
 
     for f in files:
-        print("Processing file: {}".format(f))
+        dir_name = os.path.dirname(f)
+        base_name = os.path.basename(f)
+        split_name = os.path.splitext(base_name)
         img = misc.imread(f, mode='RGB')
+        xmin = 0
+        ymin = 0
+        if crop:
+            cv_im = misc.imread(f, mode='RGB')
+            crop_im_arr = crop_predictor(cv_im, crop_path, f, crop_txt_files)
+            crop_im = crop_im_arr[0]
+            xmin = crop_im_arr[1]
+            ymin = crop_im_arr[2]
         detected = False
         win.clear_overlay()
         win.set_image(img)
@@ -156,41 +180,59 @@ if __name__ == '__main__':
         # will make everything bigger and allow us to detect more faces.
         # dets = detector(img, 1)
 
-        dets, scores, idx = detector.run(img, 1, -1)
-        scores_dict = defaultdict()
-        print("Number of faces detected: {}".format(len(dets)))
+        dets, scores, idx = detector.run(crop_im, 1, -1)
+        if len(scores) >= 1:
+            scores_dict = defaultdict()
+            print("Number of faces detected: {}".format(len(dets)))
 
-        for i, d in enumerate(dets):
-
-            score = scores[i]
-            scores_dict[score] = [d, i, idx[i]]
-            if all:
-                if score > threshold:
-                    print("Detection: {}, score: {}, face_type:{}".format(d, score, idx[i]))
-                    if crop:
-                        shape = crop_predictor(img, d, crop_path, f)
-                    else:
+            for i, d in enumerate(dets):
+                old_top = d.top()
+                old_left = d.left()
+                old_right = d.right()
+                old_bottom = d.bottom()
+                new_top = old_top + ymin
+                new_left = old_left + xmin
+                new_right = old_right + xmin
+                new_bottom = old_bottom + ymin
+                c = cv2.rectangle(img, (new_left, new_top), (new_right, new_bottom), (255, 0, 255))
+                score = scores[i]
+                scores_dict[score] = [d, i, idx[i]]
+                if all:
+                    if score > threshold:
+                        print("Detection: {}, score: {}, face_type:{}".format(d, score, idx[i]))
                         shape = predictor(img, d)
-                    print("Left: {} Top: {} Right: {} Bottom: {}".format(d.left(), d.top(), d.right(), d.bottom()))
-                    overlay(win, shape, d)
-                    detected = True
-        if detected and pause:
-            dlib.hit_enter_to_continue()
+                        print("Left: {} Top: {} Right: {} Bottom: {}".format(new_left, new_top, new_right, new_bottom))
+                        new_name = os.path.join(dir_name, split_name[0] + '_with_rectangles' + split_name[1])
+                        cv2.imwrite(new_name, img)
+                        img = misc.imread(new_name)
+                        win.set_image(img)
+                        detected = True
+            if detected and pause:
+                dlib.hit_enter_to_continue()
 
-        if not all:
-            max_score = max(list(scores_dict.keys()))
-            if max_score > threshold:
-                max_d = scores_dict[max_score][0]
-                max_i = scores_dict[max_score][1]
-                face_type = scores_dict[max_score][2]
-                print("Detection {}, score: {}, face_type:{}".format(
-                    max_d, max_score, face_type))
-                if crop:
-                    shape = crop_predictor(img, max_d, crop_path, f)
-                else:
-                    shape = predictor(img, d)
-                print("Left: {} Top: {} Right: {} Bottom: {}".format(d.left(), d.top(), d.right(), d.bottom()))
-                # Draw the face landmarks on the screen.
-                overlay(win, shape, max_d)
-                if pause:
-                    dlib.hit_enter_to_continue()
+            if not all:
+                max_score = max(list(scores_dict.keys()))
+                if max_score > threshold:
+                    max_d = scores_dict[max_score][0]
+                    max_i = scores_dict[max_score][1]
+                    old_top = max_d.top()
+                    old_left = max_d.left()
+                    old_right = max_d.right()
+                    old_bottom = max_d.bottom()
+                    new_top = old_top + ymin
+                    new_left = old_left + xmin
+                    new_right = old_right + xmin
+                    new_bottom = old_bottom + ymin
+                    c = cv2.rectangle(img, (new_left, new_top), (new_right, new_bottom), (255, 0, 255))
+                    face_type = scores_dict[max_score][2]
+                    print("Detection {}, score: {}, face_type:{}".format(
+                        max_d, max_score, face_type))
+                    shape = predictor(img, max_d)
+                    print("Left: {} Top: {} Right: {} Bottom: {}".format(new_left, new_top, new_right, new_bottom))
+                    new_name = os.path.join(dir_name, split_name[0] + '_with_rectangles' + split_name[1])
+                    cv2.imwrite(new_name, img)
+                    img = misc.imread(new_name)
+                    win.set_image(img)
+                    # Draw the face landmarks on the screen.
+                    if pause:
+                        dlib.hit_enter_to_continue()
