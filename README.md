@@ -26,7 +26,7 @@ Right double click on canvas to mark all selections as guess <br />
 XMLTransformer turns a CSV (outputted by FaceMapperFrame) or a .pts file into an xml format usable by Dlib
 ### Command Line Arguments
 - -g flag for including dots marked as guess in FaceMapper tool
-- "-c %path/to/pts" for cropping images based on bounding box before training
+- "-c %path/to/pts" for cropping images based on center of bounding box before training
 #### -t flag
 - Saves copies of the following for each image:
     - Image with brightness changed randomly

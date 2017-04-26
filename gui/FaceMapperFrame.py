@@ -339,7 +339,7 @@ class FaceMapperFrame(wx.Frame):
                         self.coordMatrix[file_index, ind, 0:2] = point
                         self.coordMatrix[file_index, ind, 2] = 0
                 numRows += 1
-            self.select_im(numRows - 2)
+            self.select_im(len(self.image_names) - 1)
     # Triggers on pressing "save and continue"
     def on_button_save(self, event):
         self.emotion_select()
