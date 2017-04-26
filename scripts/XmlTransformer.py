@@ -111,25 +111,33 @@ class XmlTransformer:  # CSV File in Disguise
                             readArr[index][val_index] = val.replace(')', '')
                     readArr = [[float(k) for k in i] for i in readArr]
 
-                    for i in range(0, len(readArr)):
-                        if i == file_num:
-                            confidence = readArr[i][2]
-                            print(name)
+                    i = file_num - 1
+                    if len(readArr) > i:
+                        confidence = readArr[i][2]
+                        if confidence > .25:
                             print(confidence)
-                            if confidence > .25:
-                                x_center = readArr[i][0]
-                                y_center = readArr[i][1]
-                                bb_size = 100
-                                xmin = int(x_center - bb_size)
-                                ymin = int(y_center - bb_size)
-                                xmax = int(x_center + bb_size)
-                                ymax = int(y_center + bb_size)
-                                im = cv2.imread(name)
-                                crop_im = im[ymin:ymax, xmin:xmax]
-                                new_name = split_name[0] + '_cropped' + split_name[1]
-                                cv2.imwrite(os.path.join(dir_name, new_name), crop_im)
-                                print(os.path.join(dir_name, new_name))
-                                file.set('file', os.path.join(dir_name, new_name))
+                            x_center = readArr[i][0] * 640 / 256
+                            y_center = readArr[i][1] * 480 / 256
+                            bb_size = 150
+                            xmin = int(x_center - bb_size)
+                            ymin = int(y_center - bb_size)
+                            xmax = int(x_center + bb_size)
+                            ymax = int(y_center + bb_size)
+                            im = cv2.imread(name)
+                            x_coords = np.clip(np.array([xmin, xmax]), 0, im.shape[1])
+                            y_coords = np.clip(np.array([ymin, ymax]), 0, im.shape[0])
+                            xmin = x_coords[0]
+                            xmax = x_coords[1]
+                            ymin = y_coords[0]
+                            ymax = y_coords[1]
+                            crop_im = im[y_coords[0]:y_coords[1], x_coords[0]:x_coords[1]].copy()
+                            new_name = split_name[0] + '_cropped' + split_name[1]
+                            cv2.imwrite(os.path.join(dir_name, new_name), crop_im)
+                            print(os.path.join(dir_name, new_name))
+                            file.set('file', os.path.join(dir_name, new_name))
+                            self.shift_all_boxes(file, -1 * xmin, -1 * ymin, im.shape[0], im.shape[1])
+                    else:
+                        print('{0} out of range'.format(i))
 
 
     def find_crop_path(self, file, crop_path):
@@ -175,7 +183,12 @@ class XmlTransformer:  # CSV File in Disguise
         M = np.float32([[1, 0, x_change], [0, 1, y_change]])
         im = cv2.warpAffine(im, M, (cols, rows))
         new_file = copy.deepcopy(file)
-        for box in list(new_file):
+        self.shift_all_boxes(new_file, x_change, y_change, rows, cols)
+        new_file = self.make_new_im(im, split_name, dir_name, '_shifted', new_file)
+        return new_file
+
+    def shift_all_boxes(self, file, x_change, y_change, rows, cols):
+        for box in list(file):
             old_left = int(box.get('left'))
             old_top = int(box.get('top'))
             new_left, new_top = self.shift(old_left, old_top, x_change, y_change, rows, cols)
@@ -187,8 +200,6 @@ class XmlTransformer:  # CSV File in Disguise
                 new_x, new_y = self.shift(old_x, old_y, x_change, y_change, rows, cols)
                 part.set('x', str(new_x))
                 part.set('y', str(new_y))
-        new_file = self.make_new_im(im, split_name, dir_name, '_shifted', new_file)
-        return new_file
 
     def shift(self, x, y, x_change, y_change, rows, cols):
         new_x = np.clip([x + x_change], 0, rows)[0]
