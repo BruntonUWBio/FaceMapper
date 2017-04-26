@@ -8,12 +8,9 @@ import xml.etree.ElementTree as ET
 from collections import defaultdict
 import glob
 import random
-
-import dlib
 import numpy as np
 import copy
 import cv2
-from scipy import misc
 from wx.lib.floatcanvas import NavCanvas, FloatCanvas, Utilities
 
 
