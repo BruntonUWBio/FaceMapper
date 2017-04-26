@@ -61,16 +61,13 @@ def overlay(win, shape, d):
     win.add_overlay(d)
 
 
-def find_crop_path(self, file, crop_path):
+def find_crop_path(file, crop_path):
     parts = file.split('.')
     pid = parts[0]
     out_num = int(''.join(parts[1][parts[1].index('out') + 3: parts[1].index('out') + 6]))
     out_file = None
-    for crop_file in glob.iglob(os.path.join(crop_path + '/**/*.txt'), recursive=True):
-        crop_file_name = os.path.splitext(os.path.basename(crop_file))[0]
-        if crop_file_name == pid:
-            out_file = crop_file
-            break
+    if pid in list(crop_txt_files.keys()):
+        out_file = crop_txt_files[pid]
     return out_file, out_num
 
 
@@ -137,6 +134,8 @@ if __name__ == '__main__':
             arg_dict[arg] = True
     if crop:
         crop_path = sys.argv[sys.argv.index('-c') + 1]
+        crop_txt_files = {os.path.splitext(os.path.basename(v))[0]: v for v in
+                          glob.iglob(os.path.join(crop_path + '/**/*.txt'), recursive=True)}
 
     file_types = ['*.jpg', '*.png']
     files = []

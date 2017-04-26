@@ -149,15 +149,13 @@ class XmlTransformer:  # CSV File in Disguise
     def find_crop_path(self, file, crop_path):
         parts = file.split('.')
         pid = parts[0]
-        out_num = int(''.join(parts[1][parts[1].index('out') + 3: parts[1].index('out') + 6]))
+        try:
+            out_num = int(''.join(parts[1][parts[1].index('out') + 3: parts[1].index('out') + 6]))
+        except ValueError:
+            return None, None
         out_file = None
         if pid in list(self.crop_txt_files.keys()):
             out_file = self.crop_txt_files[pid]
-        # for crop_file in glob.iglob(os.path.join(crop_path + '/**/*.txt'), recursive=True):
-        #    crop_file_name = os.path.splitext(os.path.basename(crop_file))[0]
-        #    if crop_file_name == pid:
-        #        out_file = crop_file
-        #        break
         return out_file, out_num
 
     def transform_images(self):
