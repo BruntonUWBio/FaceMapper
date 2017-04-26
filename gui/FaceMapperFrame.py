@@ -6,6 +6,7 @@ import os
 import os.path
 from collections import defaultdict, OrderedDict
 import sys
+import subprocess
 
 import cv2
 import numpy as np
@@ -44,16 +45,17 @@ class FaceMapperFrame(wx.Frame):
                         if smart_or_dumb_dlg.GetSelection() == 'Manual frame # entry':
                             frames_dlg = wx.TextEntryDialog(None, message='Please select frames per second', value='5')
                             if frames_dlg.ShowModal() == wx.ID_OK:
-                                os.system('ffmpeg -i "{0}" -vf fps=1/{1} "{2}"'.format(image_dir, frames_dlg.GetValue(),
-                                                                                       self.image_dir + '/' + os.path.basename(
+                                subprocess.Popen(
+                                    'ffmpeg -i "{0}" -vf fps=1/{1} "{2}"'.format(image_dir, frames_dlg.GetValue(),
+                                                                                 self.image_dir + '/' + os.path.basename(
                                                                                            image_dir)
-                                                                                       + '_out%03d.png'))
+                                                                                 + '_out%03d.png'), shell=True).wait()
                         else:
                             self.smart_dlg = True
-                            os.system(
+                            subprocess.Popen(
                                 'ffmpeg -i "{0}" -vf fps=1/{1} "{2}"'.format(image_dir, str(1), self.image_dir + '/'
                                                                              + os.path.basename(
-                                    image_dir) + '_out%03d.png'))
+                                    image_dir) + '_out%03d.png'), shell=True).wait()
             # ---------------- Basic Data -------------------
             else:
                 self.image_dir = image_dir

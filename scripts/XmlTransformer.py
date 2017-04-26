@@ -26,6 +26,8 @@ class XmlTransformer:  # CSV File in Disguise
         if '-c' in sys.argv:
             crop_image = True
             crop_path = sys.argv[sys.argv.index('-c') + 1]
+            self.crop_txt_files = {os.path.splitext(os.path.basename(v))[0]: v for v in
+                                   glob.iglob(os.path.join(crop_path + '/**/*.txt'), recursive=True)}
         arg_list = sys.argv[1:]
         path = arg_list[0]
         self.include_guess = False
@@ -149,10 +151,13 @@ class XmlTransformer:  # CSV File in Disguise
         pid = parts[0]
         out_num = int(''.join(parts[1][parts[1].index('out') + 3: parts[1].index('out') + 6]))
         out_file = None
-        for crop_file in glob.iglob(os.path.join(crop_path + '/**/*.txt'), recursive=True):
-            crop_file_name = os.path.splitext(os.path.basename(crop_file))[0]
-            if crop_file_name == pid:
-                out_file = crop_file
+        if pid in list(self.crop_txt_files.keys()):
+            out_file = self.crop_txt_files[pid]
+        # for crop_file in glob.iglob(os.path.join(crop_path + '/**/*.txt'), recursive=True):
+        #    crop_file_name = os.path.splitext(os.path.basename(crop_file))[0]
+        #    if crop_file_name == pid:
+        #        out_file = crop_file
+        #        break
         return out_file, out_num
 
     def transform_images(self):
