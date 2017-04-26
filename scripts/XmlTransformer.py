@@ -40,8 +40,10 @@ class XmlTransformer:  # CSV File in Disguise
         self.append_data(path)
         fake_tree = ET.Element(None)
         if crop_image:
+            print('Cropping...')
             self.crop_images(crop_path)
         if transform_image:
+            print('Transforming...')
             self.transform_images()
         pi = ET.PI("xml-stylesheet", "type='text/xsl' href='image_metadata_stylesheet.xsl'")
         pi.tail = "\n"
@@ -96,10 +98,12 @@ class XmlTransformer:  # CSV File in Disguise
         for index, image in enumerate(self.data):
             for file in list(image):
                 name = file.attrib['file']
+                print('Name: {0}'.format(name))
                 dir_name = os.path.dirname(name)
                 base_name = os.path.basename(name)
                 split_name = os.path.splitext(base_name)
                 crop_file_path, file_num = self.find_crop_path(base_name, crop_path)
+                print('Crop file: {0}'.format(crop_file_path))
                 if crop_file_path is not None:
                     f = open(crop_file_path)
                     readArr = f.readlines()
@@ -114,8 +118,8 @@ class XmlTransformer:  # CSV File in Disguise
                     i = file_num - 1
                     if len(readArr) > i:
                         confidence = readArr[i][2]
+                        print('Confidence: {0}'.format(confidence))
                         if confidence > .25:
-                            print(confidence)
                             x_center = readArr[i][0] * 640 / 256
                             y_center = readArr[i][1] * 480 / 256
                             bb_size = 150
