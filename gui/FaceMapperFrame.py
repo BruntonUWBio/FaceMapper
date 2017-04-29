@@ -456,14 +456,9 @@ class FaceMapperFrame(wx.Frame):
         self.mirror_im(event=None, should_save=False, check_ssim_if_smart=False)
 
     def updateIndex(self, index):
-        done = True
-        while not done:
-            try:
-                self.imageIndex = index
-                self.image_name = self.image_names[self.imageIndex]
-                done = True
-            except IndexError:
-                index = index - 1
+        self.imageIndex = index
+        self.image_name = self.image_names[self.imageIndex]
+
 
         # Triggers on selecting a face part
     def color_select(self, event):
