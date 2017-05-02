@@ -1,4 +1,4 @@
-[![GitHub release](https://img.shields.io/github/release/qubyte/rubidium.svg)](https://github.com/gvelchuru/FaceMapper/releases)
+
 # Description
 Use FaceMapperFrame.py to annotate a sequence of faces from a directory or video with dots - the coordinates can be saved to a CSV
 
