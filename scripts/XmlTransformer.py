@@ -254,8 +254,8 @@ class XmlTransformer:  # CSV File in Disguise
                             except ValueError:
                                 print(csv_path + ' Has faulty encoding')
                             except IndexError:
-                                print(row)
-                                print(ind)
+                                print(index)
+                                print(row[ind])
                         all_pts = []
                         for ind in image_map[filename].keys():
                             all_pts.append(int(image_map[filename][ind][0]))
