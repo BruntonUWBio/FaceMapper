@@ -243,19 +243,17 @@ class XmlTransformer:  # CSV File in Disguise
                         for i in range(2, len(row), 3):
                             part_num = self.landmark_map[j]
                             ind = first_row.index(part_num)
-                            try:
-                                if int(float(row[ind + 2])) == 0 or self.include_guess == True:
-                                    x = str(abs(int(float(row[ind]))))
-                                    y = str(abs(int(float(row[ind + 1]))))
-                                    image_map[filename][j] = []
-                                    image_map[filename][j].append(x)
-                                    image_map[filename][j].append(y)
-                                j += 1
-                            except ValueError:
-                                print(csv_path + ' Has faulty encoding')
-                            except IndexError:
-                                print(index)
-                                print(row[ind])
+                            if ind < len(row):
+                                try:
+                                    if int(float(row[ind + 2])) == 0 or self.include_guess == True:
+                                        x = str(abs(int(float(row[ind]))))
+                                        y = str(abs(int(float(row[ind + 1]))))
+                                        image_map[filename][j] = []
+                                        image_map[filename][j].append(x)
+                                        image_map[filename][j].append(y)
+                                    j += 1
+                                except ValueError:
+                                    print(csv_path + ' Has faulty encoding')
                         all_pts = []
                         for ind in image_map[filename].keys():
                             all_pts.append(int(image_map[filename][ind][0]))
