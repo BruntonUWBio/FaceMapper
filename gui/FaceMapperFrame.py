@@ -48,7 +48,7 @@ class FaceMapperFrame(wx.Frame):
                                 subprocess.Popen(
                                     'ffmpeg -i "{0}" -vf fps=1/{1} "{2}"'.format(image_dir, frames_dlg.GetValue(),
                                                                                  self.image_dir + '/' + os.path.basename(
-                                                                                           image_dir)
+                                                                                     image_dir)
                                                                                  + '_out%03d.png'), shell=True).wait()
                         else:
                             self.smart_dlg = True
@@ -226,7 +226,7 @@ class FaceMapperFrame(wx.Frame):
         self.selectionText = wx.StaticText(self, wx.NewId(), label='Nothing currently selected')
         self.box.Add(self.selectionText, 1, wx.EXPAND)
 
-        #self.SetAutoLayout(True)
+        # self.SetAutoLayout(True)
         self.SetSizer(self.box)
         self.Layout()
 
@@ -266,7 +266,7 @@ class FaceMapperFrame(wx.Frame):
         if csv_path:
             self.open_csv_file(csv_path)
 
-    #Resets face part values to their defaults
+    # Resets face part values to their defaults
     def reset_face_part_values(self):
         self.face_part_values.clear()
         self.face_part_values["Left Eye"] = 6
@@ -340,7 +340,9 @@ class FaceMapperFrame(wx.Frame):
                         self.coordMatrix[file_index, ind, 2] = 0
                 numRows += 1
             self.select_im(len(self.image_names) - 1)
+
     # Triggers on pressing "save and continue"
+
     def on_button_save(self, event):
         self.emotion_select()
         self.emotion_select(index=self.imageIndex + 1)
@@ -437,11 +439,11 @@ class FaceMapperFrame(wx.Frame):
         self.select_im(index=self.image_names.index(self.image_name))
 
     def emotion_select(self, event=None, index=None):
-        if index == None:
+        if index is None:
             index = self.imageIndex
         try:
             self.emotion_dict[self.image_names[index]] = self.emotionList.GetSelections()
-            if self.emotionList.GetSelections() == None:
+            if self.emotionList.GetSelections() is None:
                 self.emotion_dict[self.image_names[index]] = ['None selected']
         except:
             pass
@@ -461,6 +463,7 @@ class FaceMapperFrame(wx.Frame):
 
 
         # Triggers on selecting a face part
+
     def color_select(self, event):
         list_dlg = wx.SingleChoiceDialog(self, message="Choose an option", caption="list option",
                                          choices=['Reset Num', 'Choose Color'])
@@ -594,7 +597,7 @@ class FaceMapperFrame(wx.Frame):
         is_right_down = wx.GetMouseState().RightIsDown()
         curr_y_coord = event.Coords[1]
         if is_right_down:
-            if wx.GetKeyState(wx.WXK_CONTROL): #If CTRL key is pressed, resize all circles in selections
+            if wx.GetKeyState(wx.WXK_CONTROL):  # If CTRL key is pressed, resize all circles in selections
                 for circle in self.selections:
                     self.gen_resize(circle, self.resizing_circle, curr_y_coord)
             else:
@@ -820,7 +823,6 @@ class FaceMapperFrame(wx.Frame):
         else:
             self.remove_labels()
 
-
     def make_face_label_list(self):
         dl = self.draw_list()
         for index in sorted(dl.keys()):
@@ -938,7 +940,7 @@ class FaceMapperFrame(wx.Frame):
 
     def find_first_free_pos(self):
         for i in range(self.totalDotNum):
-            circ = self.coordMatrix[self.imageIndex, i, ]
+            circ = self.coordMatrix[self.imageIndex, i,]
             if self.circ_is_null(circ) and circ[4] != 1:
                 return i
 
@@ -980,7 +982,7 @@ class FaceMapperFrame(wx.Frame):
     def curr_image_points(self, ind=None):
         if ind is None:
             ind = self.imageIndex
-        return self.coordMatrix[ind, ]
+        return self.coordMatrix[ind,]
 
     @staticmethod
     def distance(p1, p2):
@@ -1000,7 +1002,7 @@ class FaceMapperFrame(wx.Frame):
         return True
 
     def no_dots(self, index):
-        for circle in self.coordMatrix[index, ]:
+        for circle in self.coordMatrix[index,]:
             if not self.circ_is_null(circle):
                 return False
         return True
@@ -1011,6 +1013,7 @@ class FaceMapperFrame(wx.Frame):
             if not self.circ_is_null(circle):
                 last = index
         return last + 1
+
 
 if __name__ == '__main__':
     args = sys.argv
@@ -1024,7 +1027,6 @@ if __name__ == '__main__':
         type_dialog = wx.SingleChoiceDialog(None, message="Options", caption="Select either",
                                             choices=["video", "image directory"])
         choice = type_dialog.ShowModal()
-
 
         if choice == wx.ID_OK:
             if type_dialog.GetStringSelection() == "image directory":

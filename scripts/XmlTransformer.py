@@ -28,10 +28,8 @@ class XmlTransformer:  # CSV File in Disguise
         arg_list = sys.argv[1:]
         path = arg_list[0]
         self.include_guess = False
-        # output_path = arg_list[1]
         if '-g' in arg_list:
             self.include_guess = True
-        first_row = []
         self.landmark_map = defaultdict()
         self.make_landmark_map()
         self.data = ET.Element('dataset')
@@ -40,7 +38,7 @@ class XmlTransformer:  # CSV File in Disguise
         fake_tree = ET.Element(None)
         if crop_image:
             print('Cropping...')
-            self.crop_images(crop_path)
+            self.crop_images()
         if transform_image:
             print('Transforming...')
             self.transform_images()
@@ -93,7 +91,7 @@ class XmlTransformer:  # CSV File in Disguise
             for image in self.pts_to_xml(file):
                 self.images.append(image)
 
-    def crop_images(self, crop_path):
+    def crop_images(self):
         for index, image in enumerate(self.data):
             for file in list(image):
                 name = file.attrib['file']
@@ -101,38 +99,38 @@ class XmlTransformer:  # CSV File in Disguise
                 dir_name = os.path.dirname(name)
                 base_name = os.path.basename(name)
                 split_name = os.path.splitext(base_name)
-                crop_file_path, file_num = self.find_crop_path(base_name, crop_path)
+                crop_file_path, file_num = self.find_crop_path(base_name)
                 print('Crop file: {0}'.format(crop_file_path))
                 if crop_file_path is not None:
                     f = open(crop_file_path)
-                    readArr = f.readlines()
-                    readArr = [readArr[i].split(',')[0:3] for i in range(0, len(readArr), 30)]
-                    for index, num in enumerate(readArr):
+                    read_arr = f.readlines()
+                    read_arr = [read_arr[i].split(',')[0:3] for i in range(0, len(read_arr), 30)]
+                    for index, num in enumerate(read_arr):
                         for val_index, val in enumerate(num):
-                            readArr[index][val_index] = val.replace('(', '')
-                            val = readArr[index][val_index]
-                            readArr[index][val_index] = val.replace(')', '')
-                    readArr = [[float(k) for k in i] for i in readArr]
+                            read_arr[index][val_index] = val.replace('(', '')
+                            val = read_arr[index][val_index]
+                            read_arr[index][val_index] = val.replace(')', '')
+                    read_arr = [[float(k) for k in i] for i in read_arr]
 
                     i = file_num - 1
-                    if len(readArr) > i:
-                        confidence = readArr[i][2]
+                    if len(read_arr) > i:
+                        confidence = read_arr[i][2]
                         print('Confidence: {0}'.format(confidence))
                         if confidence > .25:
-                            x_center = readArr[i][0] * 640 / 256
-                            y_center = readArr[i][1] * 480 / 256
+                            x_center = read_arr[i][0] * 640 / 256
+                            y_center = read_arr[i][1] * 480 / 256
                             bb_size = 150
-                            xmin = int(x_center - bb_size)
-                            ymin = int(y_center - bb_size)
-                            xmax = int(x_center + bb_size)
-                            ymax = int(y_center + bb_size)
+                            x_min = int(x_center - bb_size)
+                            y_min = int(y_center - bb_size)
+                            x_max = int(x_center + bb_size)
+                            y_max = int(y_center + bb_size)
                             im = cv2.imread(name)
-                            x_coords = np.clip(np.array([xmin, xmax]), 0, im.shape[1])
-                            y_coords = np.clip(np.array([ymin, ymax]), 0, im.shape[0])
-                            xmin = x_coords[0]
-                            xmax = x_coords[1]
-                            ymin = y_coords[0]
-                            ymax = y_coords[1]
+                            x_coords = np.clip(np.array([x_min, x_max]), 0, im.shape[1])
+                            y_coords = np.clip(np.array([y_min, y_max]), 0, im.shape[0])
+                            x_min = x_coords[0]
+                            # x_max = x_coords[1]
+                            y_min = y_coords[0]
+                            # y_max = y_coords[1]
                             crop_im = im[y_coords[0]:y_coords[1], x_coords[0]:x_coords[1]].copy()
                             new_name = split_name[0] + '_cropped' + split_name[1]
                             cv2.imwrite(os.path.join(dir_name, new_name), crop_im)
@@ -140,12 +138,11 @@ class XmlTransformer:  # CSV File in Disguise
                             if im is not None:
                                 print(os.path.join(dir_name, new_name))
                                 file.set('file', os.path.join(dir_name, new_name))
-                                self.shift_all_boxes(file, -1 * xmin, -1 * ymin, im.shape[0], im.shape[1])
+                                self.shift_all_boxes(file, -1 * x_min, -1 * y_min, im.shape[0], im.shape[1])
                     else:
                         print('{0} out of range'.format(i))
 
-
-    def find_crop_path(self, file, crop_path):
+    def find_crop_path(self, file):
         parts = file.split('.')
         pid = parts[0]
         try:
@@ -207,12 +204,14 @@ class XmlTransformer:  # CSV File in Disguise
                 part.set('x', str(new_x))
                 part.set('y', str(new_y))
 
-    def shift(self, x, y, x_change, y_change, rows, cols):
+    @staticmethod
+    def shift(x, y, x_change, y_change, rows, cols):
         new_x = np.clip([x + x_change], 0, rows)[0]
         new_y = np.clip([y + y_change], 0, cols)[0]
         return [new_x, new_y]
 
-    def make_new_im(self, im, split_name, dir_name, addition, file):
+    @staticmethod
+    def make_new_im(im, split_name, dir_name, addition, file):
         new_name = split_name[0] + addition + split_name[1]
         cv2.imwrite(os.path.join(dir_name, new_name), im)
         new_file = copy.deepcopy(file)
@@ -230,13 +229,13 @@ class XmlTransformer:  # CSV File in Disguise
         image_map = defaultdict()
         first_row = None
         split_path = os.path.dirname(csv_path)
-        with open(csv_path, 'rt') as csvfile:
-            reader = csv.reader(csvfile)
+        with open(csv_path, 'rt') as csv_file:
+            reader = csv.reader(csv_file)
             for index, row in enumerate(reader):
                 if index == 0:
                     first_row = row
                 else:
-                    filename = os.path.join(split_path,row[0])
+                    filename = os.path.join(split_path, row[0])
                     if os.path.isfile(filename):
                         image_map[filename] = defaultdict()
                         j = 0
@@ -248,7 +247,7 @@ class XmlTransformer:  # CSV File in Disguise
                                     if row[ind + 2] == '':
                                         pass
                                     else:
-                                        if int(float(row[ind + 2])) == 0 or self.include_guess == True:
+                                        if int(float(row[ind + 2])) == 0 or self.include_guess is True:
                                             x = str(abs(int(float(row[ind]))))
                                             y = str(abs(int(float(row[ind + 1]))))
                                             image_map[filename][j] = []
@@ -263,7 +262,7 @@ class XmlTransformer:  # CSV File in Disguise
                             all_pts.append(int(image_map[filename][ind][0]))
                             all_pts.append(int(image_map[filename][ind][1]))
                         image_map[filename]['bb'] = self.bb(all_pts)
-        return self.make_image_list(image_map, csv=True)
+        return self.make_image_list(image_map, is_csv=True)
 
     def pts_to_xml(self, pts_path):
         pt_file = open(pts_path, 'r+')
@@ -280,9 +279,7 @@ class XmlTransformer:  # CSV File in Disguise
             split_lines.remove('{')
         split_path = os.path.dirname(pts_path)
         image_map = defaultdict()
-        just_file = os.path.basename(pts_path)
-        just_file = just_file[0: len(just_file) - 4]
-        ext = just_file[len(just_file) - 4:len(just_file)]
+        just_file, ext = os.path.splitext(pts_path)[0], os.path.splitext(pts_path)[1]
         filename = split_path + '/' + just_file + ext
         image_map[filename] = []
         for i in range(len(split_lines)):
@@ -295,10 +292,10 @@ class XmlTransformer:  # CSV File in Disguise
         return self.make_image_list(image_map)
 
     @staticmethod
-    def make_image_list(image_map, csv=False):
+    def make_image_list(image_map, is_csv=False):
         image_list = defaultdict()
         images = ET.Element('images')
-        if not csv:
+        if not is_csv:
             for index, file in enumerate(image_map.keys()):
                 e = ET.SubElement(images, 'image', {'file': '{0}'.format(file)})
                 image_list[e] = {}
@@ -315,7 +312,6 @@ class XmlTransformer:  # CSV File in Disguise
                 image_list[e][bbox] = []
                 j = 0
                 for i in range(1, len(coord_list), 2):
-                    name = ''
                     if j < 10:
                         name = str('0' + str(j))
                     else:
@@ -345,7 +341,6 @@ class XmlTransformer:  # CSV File in Disguise
                     image_list[e][bbox] = []
                     for ind in coord_dict.keys():
                         if ind != 'bb':
-                            name = ''
                             if int(ind) < 10:
                                 name = str('0' + str(ind))
                             else:
