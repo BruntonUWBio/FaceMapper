@@ -282,7 +282,8 @@ class XmlTransformer:  # CSV File in Disguise
         image_map = defaultdict()
         just_file = os.path.basename(pts_path)
         just_file = just_file[0: len(just_file) - 4]
-        filename = split_path + '/' + just_file + '.png'
+        ext = just_file[len(just_file) - 4:len(just_file)]
+        filename = split_path + '/' + just_file + ext
         image_map[filename] = []
         for i in range(len(split_lines)):
             pts = split_lines[i].split(' ')
