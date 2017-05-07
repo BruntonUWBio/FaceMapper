@@ -114,6 +114,7 @@ class Detector:
             scaled_width = img.shape[1]
             scaled_height = img.shape[0]
             detected = False
+            self.win.clear_overlay()
             self.win.set_image(img)
             if self.nose and self.crop:
                 crop_im_arr = self.crop_predictor(img, f, crop_txt_files, nose_path, nose_txt_files,
@@ -124,7 +125,7 @@ class Detector:
                     y_min = crop_im_arr[2]
                     x_max = crop_im_arr[3]
                     y_max = crop_im_arr[4]
-                    scores_dict = self.show_face(f, crop_im, detected)
+                    scores_dict = self.show_face(f, crop_im, detected, show=False)
 
                     if not self.all:
                         max_score, max_d = self.find_maxes(scores_dict)
@@ -133,7 +134,6 @@ class Detector:
                             old_left = max_d.left()
                             old_right = max_d.right()
                             old_bottom = max_d.bottom()
-                            self.win.clear_overlay()
                             self.win.set_image(img)
                             new_top = int(old_top + y_min)
                             new_left = int(old_left + x_min)
@@ -145,7 +145,10 @@ class Detector:
 
 
                 else:
-                    self.show_face(f, img, detected)
+                    dir_name, base_name, split_name = self.splitname(f)
+                    new_name = self.new_file_name(os.path.join(dir_name, 'detected/'), split_name, '_detected')
+                    img = cv2.cvtColor(img, cv2.COLOR_RGB2BGR)
+                    cv2.imwrite(new_name, img)
             else:
                 self.show_face(f, img, detected)
 
@@ -288,7 +291,7 @@ class Detector:
             cv_dot = cv2.circle(img, (dot.x, dot.y), 3, (0, 0, 255))
         cv2.imwrite(new_name, img)
 
-    def show_face(self, name, img, detected):
+    def show_face(self, name, img, detected, show=True):
         dets, scores, idx = self.detector.run(img, 1, -1)
         scores_dict = defaultdict()
         print("Number of faces detected: {}".format(len(dets)))
@@ -296,17 +299,18 @@ class Detector:
         for i, d in enumerate(dets):
             score = scores[i]
             scores_dict[score] = [d, i, idx[i]]
-            if self.all:
-                if score > self.threshold:
-                    print("Detection: {}, score: {}, face_type:{}".format(d, score, idx[i]))
-                    shape = self.predictor(img, d)
-                    print("Left: {} Top: {} Right: {} Bottom: {}".format(d.left(), d.top(), d.right(), d.bottom()))
-                    self.overlay(shape, d)
-                    detected = True
+            if show:
+                if self.all:
+                    if score > self.threshold:
+                        print("Detection: {}, score: {}, face_type:{}".format(d, score, idx[i]))
+                        shape = self.predictor(img, d)
+                        print("Left: {} Top: {} Right: {} Bottom: {}".format(d.left(), d.top(), d.right(), d.bottom()))
+                        self.overlay(shape, d)
+                        detected = True
         if detected and self.pause:
             dlib.hit_enter_to_continue()
 
-        if not self.all:
+        if show and not self.all:
             self.show_best_face(name, scores_dict, img=img)
 
         return scores_dict
