@@ -245,13 +245,16 @@ class XmlTransformer:  # CSV File in Disguise
                             ind = first_row.index(part_num)
                             if ind < len(row):
                                 try:
-                                    if int(float(row[ind + 2])) == 0 or self.include_guess == True:
-                                        x = str(abs(int(float(row[ind]))))
-                                        y = str(abs(int(float(row[ind + 1]))))
-                                        image_map[filename][j] = []
-                                        image_map[filename][j].append(x)
-                                        image_map[filename][j].append(y)
-                                    j += 1
+                                    if row[ind + 2] == '':
+                                        pass
+                                    else:
+                                        if int(float(row[ind + 2])) == 0 or self.include_guess == True:
+                                            x = str(abs(int(float(row[ind]))))
+                                            y = str(abs(int(float(row[ind + 1]))))
+                                            image_map[filename][j] = []
+                                            image_map[filename][j].append(x)
+                                            image_map[filename][j].append(y)
+                                        j += 1
                                 except ValueError as e:
                                     print(e)
                                     print(csv_path + ' Has faulty encoding')
