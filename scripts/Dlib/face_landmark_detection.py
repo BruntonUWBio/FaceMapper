@@ -151,7 +151,7 @@ class Detector:
                             scores_dict_arr = [self.show_face(f, crop_im_array[0], detected, show=False) for
                                                f, crop_im_array in
                                                zip(f_arr, crop_im_arr_arr) if
-                                               f is not None and crop_im_arr_arr is not None]
+                                               f is not None and crop_im_array is not None]
                             all_scores = [item for sublist in [dicti.keys() for dicti in scores_dict_arr] for item in
                                           sublist]
                             if all_scores is not None and all_scores:
