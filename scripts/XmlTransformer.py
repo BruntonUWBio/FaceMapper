@@ -285,15 +285,20 @@ class XmlTransformer:  # CSV File in Disguise
             test_file_name = os.path.join(split_path, just_file + img_ext)
             if os.path.isfile(test_file_name):
                 filename = test_file_name
-        image_map[filename] = []
-        for i in range(len(split_lines)):
-            pts = split_lines[i].split(' ')
-            x = str(abs(int(float(pts[0]))))
-            y = str(abs(int(float(pts[1]))))
-            image_map[filename].append(x)
-            image_map[filename].append(y)
-        image_map[filename].insert(0, self.bb(image_map[filename]))
-        return self.make_image_list(image_map)
+        if filename:
+            image_map[filename] = []
+            for i in range(len(split_lines)):
+                pts = split_lines[i].split(' ')
+                x = str(abs(int(float(pts[0]))))
+                y = str(abs(int(float(pts[1]))))
+                image_map[filename].append(x)
+                image_map[filename].append(y)
+            image_map[filename].insert(0, self.bb(image_map[filename]))
+            return self.make_image_list(image_map)
+        else:
+            print(os.path.join(split_path, just_file + ext) + 'has no associated file')
+            return None
+
 
     @staticmethod
     def make_image_list(image_map, is_csv=False):

@@ -111,17 +111,17 @@ class Detector:
 
         for index, f in enumerate(files):
             print("Processing file: {}".format(f))
-            num_smoothing = 5
+            num_smoothing = 8
             if index >= num_smoothing:
                 f_arr = [files[index + i] for i in range(-num_smoothing, num_smoothing)]
             else:
                 f_arr = [files[index + i] for i in range(0, num_smoothing)]
             img_arr = [misc.imread(file, mode='RGB') for file in f_arr]
+            img_arr = [misc.imresize(img, (960, 1280)) for img in img_arr]
             if index >= num_smoothing:
                 img = img_arr[num_smoothing]
             else:
                 img = img_arr[index]
-            img = misc.imresize(img, (960, 1280))
             scaled_width = img.shape[1]
             scaled_height = img.shape[0]
             detected = False
@@ -143,7 +143,7 @@ class Detector:
                         x_max = crop_im_arr[3]
                         y_max = crop_im_arr[4]
 
-                        scores_dict_arr = [self.show_face(f, crop_im[0], detected, show=True) for f, crop_im in
+                        scores_dict_arr = [self.show_face(f, crop_im[0], detected, show=False) for f, crop_im in
                                            zip(f_arr, crop_im_arr_arr)]
                         all_scores = [item for sublist in [dicti.keys() for dicti in scores_dict_arr] for item in
                                       sublist]
