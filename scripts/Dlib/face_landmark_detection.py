@@ -142,33 +142,33 @@ class Detector:
                         y_min = crop_im_arr[2]
                         x_max = crop_im_arr[3]
                         y_max = crop_im_arr[4]
+                        if crop_im is not None:
+                            scores_dict_arr = [self.show_face(f, crop_im[0], detected, show=False) for f, crop_im in
+                                               zip(f_arr, crop_im_arr_arr)]
+                            all_scores = [item for sublist in [dicti.keys() for dicti in scores_dict_arr] for item in
+                                          sublist]
+                            if all_scores:
+                                max_score = max(all_scores)
+                                for score_dict in scores_dict_arr:
+                                    if max_score in score_dict.keys():
+                                        scores_dict = score_dict
 
-                        scores_dict_arr = [self.show_face(f, crop_im[0], detected, show=False) for f, crop_im in
-                                           zip(f_arr, crop_im_arr_arr)]
-                        all_scores = [item for sublist in [dicti.keys() for dicti in scores_dict_arr] for item in
-                                      sublist]
-                        if all_scores:
-                            max_score = max(all_scores)
-                            for score_dict in scores_dict_arr:
-                                if max_score in score_dict.keys():
-                                    scores_dict = score_dict
-
-                            if not self.all:
-                                max_score, max_d = self.find_maxes(scores_dict)
-                                if max_score is not None:
-                                    old_top = max_d.top()
-                                    old_left = max_d.left()
-                                    old_right = max_d.right()
-                                    old_bottom = max_d.bottom()
-                                    self.win.set_image(img)
-                                    new_top = int(old_top + y_min)
-                                    new_left = int(old_left + x_min)
-                                    new_right = int(old_right + x_min)
-                                    new_bottom = int(old_bottom + y_min)
-                                    new_d = dlib.rectangle(left=new_left, top=new_top, right=new_right,
-                                                           bottom=new_bottom)
-                                    self.show_best_face(name=f, scores_dict=scores_dict, img=img, show=True,
-                                                        max_score=max_score, max_d=new_d, save=True)
+                                if not self.all:
+                                    max_score, max_d = self.find_maxes(scores_dict)
+                                    if max_score is not None:
+                                        old_top = max_d.top()
+                                        old_left = max_d.left()
+                                        old_right = max_d.right()
+                                        old_bottom = max_d.bottom()
+                                        self.win.set_image(img)
+                                        new_top = int(old_top + y_min)
+                                        new_left = int(old_left + x_min)
+                                        new_right = int(old_right + x_min)
+                                        new_bottom = int(old_bottom + y_min)
+                                        new_d = dlib.rectangle(left=new_left, top=new_top, right=new_right,
+                                                               bottom=new_bottom)
+                                        self.show_best_face(name=f, scores_dict=scores_dict, img=img, show=True,
+                                                            max_score=max_score, max_d=new_d, save=True)
 
 
                     else:

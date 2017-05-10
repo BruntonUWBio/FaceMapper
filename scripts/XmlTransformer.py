@@ -281,6 +281,7 @@ class XmlTransformer:  # CSV File in Disguise
         split_path = os.path.dirname(pts_path)
         image_map = defaultdict()
         just_file, ext = os.path.basename(os.path.splitext(pts_path)[0]), os.path.splitext(pts_path)[1]
+        filename = None
         for img_ext in IMAGE_FORMATS:
             test_file_name = os.path.join(split_path, just_file + img_ext)
             if os.path.isfile(test_file_name):
@@ -296,6 +297,8 @@ class XmlTransformer:  # CSV File in Disguise
             image_map[filename].insert(0, self.bb(image_map[filename]))
             return self.make_image_list(image_map)
         else:
+            print(split_path)
+            print(just_file)
             print(os.path.join(split_path, just_file + ext) + 'has no associated file')
             return None
 
