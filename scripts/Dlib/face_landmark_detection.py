@@ -167,7 +167,8 @@ class Detector:
                                         old_left = max_d.left()
                                         old_right = max_d.right()
                                         old_bottom = max_d.bottom()
-                                        self.win.set_image(img)
+                                        if self.win:
+                                            self.win.set_image(img)
                                         new_top = int(old_top + y_min)
                                         new_left = int(old_left + x_min)
                                         new_right = int(old_right + x_min)
@@ -380,7 +381,7 @@ class Detector:
         if detected and self.pause:
             dlib.hit_enter_to_continue()
 
-        if show and not self.all:
+        if show and not self.all and self.show:
             self.win.set_image(img)
             self.show_best_face(name, scores_dict, img=img)
 
