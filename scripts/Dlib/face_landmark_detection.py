@@ -51,7 +51,6 @@ from collections import defaultdict
 from scipy import misc
 import numpy as np
 import re
-from operator import itemgetter
 import cv2
 
 
@@ -103,11 +102,7 @@ class Detector:
         files = []
         for ext in file_types:
             files.extend(glob.glob(join(faces_folder_path + '/**/', ext), recursive=True))
-
-        files = sorted(files)
-        for f in files:
-            if '_detected' in f:
-                files.remove(f)
+        files = sorted([f for f in files if '_detected' not in f])
 
         for index, f in enumerate(files):
             print("Processing file: {}".format(f))
@@ -128,7 +123,7 @@ class Detector:
             self.win.clear_overlay()
             self.win.set_image(img)
             if self.smooth:
-                if self.nose and self.crop:
+                if self.nose and self.crop and img_arr and f_arr:
                     crop_im_arr_arr = [
                         self.crop_predictor(img, f, scaled_height=scaled_height, scaled_width=scaled_width) for img, f
                         in zip(img_arr, f_arr)]
@@ -142,12 +137,12 @@ class Detector:
                         y_min = crop_im_arr[2]
                         x_max = crop_im_arr[3]
                         y_max = crop_im_arr[4]
-                        if crop_im is not None:
+                        if crop_im is not None and f_arr is not None and crop_im_arr_arr is not None:
                             scores_dict_arr = [self.show_face(f, crop_im[0], detected, show=False) for f, crop_im in
                                                zip(f_arr, crop_im_arr_arr)]
                             all_scores = [item for sublist in [dicti.keys() for dicti in scores_dict_arr] for item in
                                           sublist]
-                            if all_scores:
+                            if all_scores is not None and all_scores:
                                 max_score = max(all_scores)
                                 for score_dict in scores_dict_arr:
                                     if max_score in score_dict.keys():
