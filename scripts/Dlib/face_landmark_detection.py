@@ -51,6 +51,7 @@ from collections import defaultdict
 from scipy import misc
 import numpy as np
 import re
+from operator import itemgetter
 import cv2
 
 
@@ -73,6 +74,7 @@ class Detector:
             '-n': False,
             '-f': 1,
             '-s': False,
+            '-sm': False,
         }
         for arg in list(arg_dict.keys()):
             if arg in sys.argv:
@@ -83,19 +85,19 @@ class Detector:
         self.nose = arg_dict['-n']
         self.fps_frac = arg_dict['-f']
         self.save = arg_dict['-s']
+        self.smooth = arg_dict['-sm']
 
-        crop_path = None
-        nose_txt_files = None
-        nose_path = None
-        crop_txt_files = None
+        self.nose_txt_files = None
+        self.nose_path = None
+        self.crop_txt_files = None
 
         if self.nose:
-            nose_path = sys.argv[sys.argv.index('-n') + 1]
-            nose_txt_files = self.find_txt_files(nose_path)
+            self.nose_path = sys.argv[sys.argv.index('-n') + 1]
+            self.nose_txt_files = self.find_txt_files(self.nose_path)
 
         if self.crop:
-            crop_path = sys.argv[sys.argv.index('-c') + 1]
-            crop_txt_files = self.find_txt_files(crop_path)
+            self.crop_path = sys.argv[sys.argv.index('-c') + 1]
+            self.crop_txt_files = self.find_txt_files(self.crop_path)
 
         file_types = ['*.jpg', '*.png']
         files = []
@@ -107,50 +109,101 @@ class Detector:
             if '_detected' in f:
                 files.remove(f)
 
-        for f in files:
+        for index, f in enumerate(files):
             print("Processing file: {}".format(f))
-            img = misc.imread(f, mode='RGB')
+            num_smoothing = 5
+            f_arr = [files[index + i] for i in range(-num_smoothing, num_smoothing)]
+            img_arr = [misc.imread(file, mode='RGB') for file in f_arr]
+            img = img_arr[num_smoothing]
             img = misc.imresize(img, (960, 1280))
             scaled_width = img.shape[1]
             scaled_height = img.shape[0]
             detected = False
             self.win.clear_overlay()
             self.win.set_image(img)
-            if self.nose and self.crop:
-                crop_im_arr = self.crop_predictor(img, f, crop_txt_files, nose_path, nose_txt_files,
-                                                  scaled_height=scaled_height, scaled_width=scaled_width)
-                if crop_im_arr is not None:
-                    crop_im = crop_im_arr[0]
-                    x_min = crop_im_arr[1]
-                    y_min = crop_im_arr[2]
-                    x_max = crop_im_arr[3]
-                    y_max = crop_im_arr[4]
-                    scores_dict = self.show_face(f, crop_im, detected, show=False)
+            if self.smooth:
+                if self.nose and self.crop:
+                    crop_im_arr_arr = [
+                        self.crop_predictor(img, f, scaled_height=scaled_height, scaled_width=scaled_width) for img, f
+                        in zip(img_arr, f_arr)]
+                    crop_im_arr = crop_im_arr_arr[num_smoothing]
+                    if crop_im_arr is not None:
+                        crop_im = crop_im_arr[0]
+                        x_min = crop_im_arr[1]
+                        y_min = crop_im_arr[2]
+                        x_max = crop_im_arr[3]
+                        y_max = crop_im_arr[4]
 
-                    if not self.all:
-                        max_score, max_d = self.find_maxes(scores_dict)
-                        if max_score is not None:
-                            old_top = max_d.top()
-                            old_left = max_d.left()
-                            old_right = max_d.right()
-                            old_bottom = max_d.bottom()
-                            self.win.set_image(img)
-                            new_top = int(old_top + y_min)
-                            new_left = int(old_left + x_min)
-                            new_right = int(old_right + x_min)
-                            new_bottom = int(old_bottom + y_min)
-                            new_d = dlib.rectangle(left=new_left, top=new_top, right=new_right, bottom=new_bottom)
-                            self.show_best_face(name=f, scores_dict=scores_dict, img=img, show=True,
-                                                max_score=max_score, max_d=new_d, save=True)
+                        scores_dict_arr = [self.show_face(f, crop_im[0], detected, show=True) for f, crop_im in
+                                           zip(f_arr, crop_im_arr_arr)]
+                        all_scores = [item for sublist in [dicti.keys() for dicti in scores_dict_arr] for item in
+                                      sublist]
+                        if all_scores:
+                            max_score = max(all_scores)
+                            for score_dict in scores_dict_arr:
+                                if max_score in score_dict.keys():
+                                    scores_dict = score_dict
+
+                            if not self.all:
+                                max_score, max_d = self.find_maxes(scores_dict)
+                                if max_score is not None:
+                                    old_top = max_d.top()
+                                    old_left = max_d.left()
+                                    old_right = max_d.right()
+                                    old_bottom = max_d.bottom()
+                                    self.win.set_image(img)
+                                    new_top = int(old_top + y_min)
+                                    new_left = int(old_left + x_min)
+                                    new_right = int(old_right + x_min)
+                                    new_bottom = int(old_bottom + y_min)
+                                    new_d = dlib.rectangle(left=new_left, top=new_top, right=new_right,
+                                                           bottom=new_bottom)
+                                    self.show_best_face(name=f, scores_dict=scores_dict, img=img, show=True,
+                                                        max_score=max_score, max_d=new_d, save=True)
 
 
+                    else:
+                        dir_name, base_name, split_name = self.splitname(f)
+                        new_name = self.new_file_name(os.path.join(dir_name, 'detected/'), split_name, '_detected')
+                        img = cv2.cvtColor(img, cv2.COLOR_RGB2BGR)
+                        cv2.imwrite(new_name, img)
                 else:
-                    dir_name, base_name, split_name = self.splitname(f)
-                    new_name = self.new_file_name(os.path.join(dir_name, 'detected/'), split_name, '_detected')
-                    img = cv2.cvtColor(img, cv2.COLOR_RGB2BGR)
-                    cv2.imwrite(new_name, img)
+                    self.show_face(f, img, detected)
             else:
-                self.show_face(f, img, detected)
+                if self.nose and self.crop:
+                    crop_im_arr = self.crop_predictor(img, f, scaled_height=scaled_height, scaled_width=scaled_width)
+                    if crop_im_arr is not None:
+                        crop_im = crop_im_arr[0]
+                        x_min = crop_im_arr[1]
+                        y_min = crop_im_arr[2]
+                        x_max = crop_im_arr[3]
+                        y_max = crop_im_arr[4]
+                        scores_dict = self.show_face(f, crop_im, detected, show=False)
+
+                        if not self.all:
+                            max_score, max_d = self.find_maxes(scores_dict)
+                            if max_score is not None:
+                                old_top = max_d.top()
+                                old_left = max_d.left()
+                                old_right = max_d.right()
+                                old_bottom = max_d.bottom()
+                                self.win.set_image(img)
+                                new_top = int(old_top + y_min)
+                                new_left = int(old_left + x_min)
+                                new_right = int(old_right + x_min)
+                                new_bottom = int(old_bottom + y_min)
+                                new_d = dlib.rectangle(left=new_left, top=new_top, right=new_right, bottom=new_bottom)
+                                self.show_best_face(name=f, scores_dict=scores_dict, img=img, show=True,
+                                                    max_score=max_score, max_d=new_d, save=True)
+
+
+                    else:
+                        dir_name, base_name, split_name = self.splitname(f)
+                        new_name = self.new_file_name(os.path.join(dir_name, 'detected/'), split_name, '_detected')
+                        img = cv2.cvtColor(img, cv2.COLOR_RGB2BGR)
+                        cv2.imwrite(new_name, img)
+                else:
+                    self.show_face(f, img, detected)
 
     def overlay(self, shape, d):
         self.win.add_overlay(shape)
@@ -191,12 +244,12 @@ class Detector:
         readArr = [[float(k) for k in i] for i in readArr]
         return readArr
 
-    def crop_predictor(self, img, name, crop_txt_files, nose_path, nose_txt_files, scaled_width, scaled_height):
+    def crop_predictor(self, img, name, scaled_width, scaled_height):
         print('Name: {0}'.format(name))
         dir_name = os.path.dirname(name)
         base_name = os.path.basename(name)
         split_name = os.path.splitext(base_name)
-        crop_file_path, file_num = self.find_crop_path(base_name, crop_txt_files)
+        crop_file_path, file_num = self.find_crop_path(base_name, self.crop_txt_files)
         print('Crop file: {0}'.format(crop_file_path))
         x_min = 0
         y_min = 0
@@ -213,7 +266,7 @@ class Detector:
                 x_max = curr_im_coords[1] * scaled_width / 640
                 y_max = curr_im_coords[3] * scaled_height / 480
 
-        nose_file_path, file_num = self.find_crop_path(base_name, nose_txt_files)
+        nose_file_path, file_num = self.find_crop_path(base_name, self.nose_txt_files)
         print('Nose file: {0}'.format(nose_file_path))
         if nose_file_path is not None:
             f = open(nose_file_path)
@@ -311,6 +364,7 @@ class Detector:
             dlib.hit_enter_to_continue()
 
         if show and not self.all:
+            self.win.set_image(img)
             self.show_best_face(name, scores_dict, img=img)
 
         return scores_dict

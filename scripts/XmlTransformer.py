@@ -279,8 +279,8 @@ class XmlTransformer:  # CSV File in Disguise
             split_lines.remove('{')
         split_path = os.path.dirname(pts_path)
         image_map = defaultdict()
-        just_file, ext = os.path.splitext(pts_path)[0], os.path.splitext(pts_path)[1]
-        filename = split_path + '/' + just_file + ext
+        just_file, ext = os.path.basename(os.path.splitext(pts_path)[0]), os.path.splitext(pts_path)[1]
+        filename = os.path.join(split_path, just_file + ext)
         image_map[filename] = []
         for i in range(len(split_lines)):
             pts = split_lines[i].split(' ')
