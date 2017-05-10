@@ -61,7 +61,7 @@ class Detector:
 
         self.detector = dlib.get_frontal_face_detector()
         self.predictor = dlib.shape_predictor(predictor_path)
-        self.win = dlib.image_window()
+        self.win = None
         self.threshold = -1
         self.num_smoothing = 6
 
@@ -78,6 +78,7 @@ class Detector:
             '-f': 1,
             '-s': False,
             '-sm': False,
+            '-sh': False,
         }
         for arg in list(arg_dict.keys()):
             if arg in sys.argv:
@@ -89,6 +90,10 @@ class Detector:
         self.fps_frac = arg_dict['-f']
         self.save = arg_dict['-s']
         self.smooth = arg_dict['-sm']
+        self.show = arg_dict['-sh']
+
+        if self.show:
+            self.win = dlib.image_window()
 
         self.nose_txt_files = None
         self.nose_path = None
@@ -124,8 +129,9 @@ class Detector:
             scaled_width = img.shape[1]
             scaled_height = img.shape[0]
             detected = False
-            self.win.clear_overlay()
-            self.win.set_image(img)
+            if self.win:
+                self.win.clear_overlay()
+                self.win.set_image(img)
             if self.smooth:
                 if self.nose and self.crop and img_arr and f_arr:
                     crop_im_arr_arr = [
@@ -216,8 +222,9 @@ class Detector:
                     self.show_face(f, img, detected)
 
     def overlay(self, shape, d):
-        self.win.add_overlay(shape)
-        self.win.add_overlay(d)
+        if self.win:
+            self.win.add_overlay(shape)
+            self.win.add_overlay(d)
 
     @staticmethod
     def splitname(name):
