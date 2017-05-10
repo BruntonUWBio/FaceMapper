@@ -112,9 +112,15 @@ class Detector:
         for index, f in enumerate(files):
             print("Processing file: {}".format(f))
             num_smoothing = 5
-            f_arr = [files[index + i] for i in range(-num_smoothing, num_smoothing)]
+            if index >= num_smoothing:
+                f_arr = [files[index + i] for i in range(-num_smoothing, num_smoothing)]
+            else:
+                f_arr = [files[index + i] for i in range(0, num_smoothing)]
             img_arr = [misc.imread(file, mode='RGB') for file in f_arr]
-            img = img_arr[num_smoothing]
+            if index >= num_smoothing:
+                img = img_arr[num_smoothing]
+            else:
+                img = img_arr[index]
             img = misc.imresize(img, (960, 1280))
             scaled_width = img.shape[1]
             scaled_height = img.shape[0]
@@ -126,7 +132,10 @@ class Detector:
                     crop_im_arr_arr = [
                         self.crop_predictor(img, f, scaled_height=scaled_height, scaled_width=scaled_width) for img, f
                         in zip(img_arr, f_arr)]
-                    crop_im_arr = crop_im_arr_arr[num_smoothing]
+                    if index >= num_smoothing:
+                        crop_im_arr = crop_im_arr_arr[num_smoothing]
+                    else:
+                        crop_im_arr = crop_im_arr_arr[index]
                     if crop_im_arr is not None:
                         crop_im = crop_im_arr[0]
                         x_min = crop_im_arr[1]

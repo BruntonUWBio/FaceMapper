@@ -13,6 +13,7 @@ import copy
 import cv2
 from wx.lib.floatcanvas import NavCanvas, FloatCanvas, Utilities
 
+IMAGE_FORMATS = [".jpg", ".png", ".ppm", ".pgm", ".gif", ".tif", ".tiff", ".jpe"]
 
 class XmlTransformer:  # CSV File in Disguise
     def __init__(self):
@@ -280,7 +281,10 @@ class XmlTransformer:  # CSV File in Disguise
         split_path = os.path.dirname(pts_path)
         image_map = defaultdict()
         just_file, ext = os.path.basename(os.path.splitext(pts_path)[0]), os.path.splitext(pts_path)[1]
-        filename = os.path.join(split_path, just_file + ext)
+        for img_ext in IMAGE_FORMATS:
+            test_file_name = os.path.join(split_path, just_file + img_ext)
+            if os.path.isfile(test_file_name):
+                filename = test_file_name
         image_map[filename] = []
         for i in range(len(split_lines)):
             pts = split_lines[i].split(' ')
