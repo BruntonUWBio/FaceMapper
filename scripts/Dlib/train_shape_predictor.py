@@ -67,7 +67,6 @@ options = dlib.shape_predictor_training_options()
 # You should also read Kazemi's paper which explains all the parameters
 # in great detail.
 
-# options.oversampling_amount = 300
 options.be_verbose = True
 
 # dlib.train_shape_predictor() does the actual training.  It will save the

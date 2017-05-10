@@ -63,9 +63,13 @@ class Detector:
         self.predictor = dlib.shape_predictor(predictor_path)
         self.win = dlib.image_window()
         self.threshold = -1
+        self.num_smoothing = 6
 
         if '-th' in sys.argv:
             self.threshold = float(sys.argv[sys.argv.index('-th') + 1])
+        if '-sm' in sys.argv:
+            self.num_smoothing = int(sys.argv[sys.argv.index('-sm') + 1])
+
         arg_dict = {
             '-a': False,
             '-p': False,
@@ -106,7 +110,7 @@ class Detector:
 
         for index, f in enumerate(files):
             print("Processing file: {}".format(f))
-            num_smoothing = 8
+            num_smoothing = self.num_smoothing
             if index >= num_smoothing:
                 f_arr = [files[index + i] for i in range(-num_smoothing, num_smoothing)]
             else:
@@ -126,7 +130,7 @@ class Detector:
                 if self.nose and self.crop and img_arr and f_arr:
                     crop_im_arr_arr = [
                         self.crop_predictor(img, f, scaled_height=scaled_height, scaled_width=scaled_width) for img, f
-                        in zip(img_arr, f_arr)]
+                        in zip(img_arr, f_arr) if img is not None and f is not None]
                     if index >= num_smoothing:
                         crop_im_arr = crop_im_arr_arr[num_smoothing]
                     else:
@@ -138,8 +142,10 @@ class Detector:
                         x_max = crop_im_arr[3]
                         y_max = crop_im_arr[4]
                         if crop_im is not None and f_arr is not None and crop_im_arr_arr is not None:
-                            scores_dict_arr = [self.show_face(f, crop_im[0], detected, show=False) for f, crop_im in
-                                               zip(f_arr, crop_im_arr_arr)]
+                            scores_dict_arr = [self.show_face(f, crop_im_array[0], detected, show=False) for
+                                               f, crop_im_array in
+                                               zip(f_arr, crop_im_arr_arr) if
+                                               f is not None and crop_im_arr_arr is not None]
                             all_scores = [item for sublist in [dicti.keys() for dicti in scores_dict_arr] for item in
                                           sublist]
                             if all_scores is not None and all_scores:
