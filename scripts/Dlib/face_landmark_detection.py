@@ -116,10 +116,8 @@ class Detector:
         for index, f in enumerate(files):
             print("Processing file: {}".format(f))
             num_smoothing = self.num_smoothing
-            if index >= num_smoothing:
-                f_arr = [files[index + i] for i in range(-num_smoothing, num_smoothing)]
-            else:
-                f_arr = [files[index + i] for i in range(0, num_smoothing)]
+            f_arr = [files[index + i] for i in range(-num_smoothing, num_smoothing) if
+                     (index + i) in range(0, len(files))]
             img_arr = [misc.imread(file, mode='RGB') for file in f_arr]
             img_arr = [misc.imresize(img, (960, 1280)) for img in img_arr]
             if index >= num_smoothing:
