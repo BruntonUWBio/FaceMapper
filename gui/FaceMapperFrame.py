@@ -482,7 +482,13 @@ class FaceMapperFrame(wx.Frame):
                 self.reset_face_part_values()
                 self.reset_face_parts()
                 self.reset_face_num()
+                self.remove_occluded()
                 self.make_face_label_list()
+
+    def remove_occluded(self):
+        for point in self.coordMatrix[self.imageIndex]:
+            if point[4] == 1:
+                point[4] = 0
 
     # Displays image
     def display_image(self, zoom):
