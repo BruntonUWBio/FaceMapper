@@ -203,7 +203,8 @@ class Detector:
                                                      range(index - num_smoothing, index + num_smoothing) if
                                                      (index + i) in self.shape_arr.keys()}
                                         if max_score_arr:
-                                            self.show_average_face(f, img, index, max_score_arr, shape_arr, show=True)
+                                            self.show_average_face(f, img, index, max_score_arr, shape_arr,
+                                                                   show=self.show)
 
                                             # This code gives you the best face instead of the average smoothed face, which is not as good
 
@@ -280,8 +281,8 @@ class Detector:
                                     cv2.imwrite(new_name, img)
                             else:
                                 self.show_face(f, img, detected)
-                    subprocess.Popen("ffmpeg -r 60 -f image2 -s 1920x1080 -pattern_type glob -i '{0}' -vcodec libx264 "
-                                     "-crf 5 -pix_fmt yuv420p {1}".format('*.png',
+                    subprocess.Popen("ffmpeg -r 60 -f image2 -s 1920x1080 -pattern_type glob -i '{0}' "
+                                     "-b 2000k {1}".format('*.png',
                                                                           os.path.join(vid_path, 'thresh_' + str(
                                                                               thresh).replace('.', '') + 'dis_' + str(
                                                                               distance_weight).replace('.',
