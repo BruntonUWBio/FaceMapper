@@ -51,24 +51,39 @@ from collections import defaultdict
 from scipy import misc
 import numpy as np
 import re
+import subprocess
 import cv2
 
 
 class Detector:
-    def __init__(self):
+    def __init__(self, threshold=None, distance_weight=None, num_smoothing=None):
         predictor_path = sys.argv[1]
         faces_folder_path = sys.argv[2]
 
         self.detector = dlib.get_frontal_face_detector()
         self.predictor = dlib.shape_predictor(predictor_path)
+        self.threshold = None
+        self.num_smoothing = None
         self.win = None
-        self.threshold = -1
-        self.num_smoothing = 6
+        if threshold is None:
+            self.threshold = -1
+        else:
+            self.threshold = threshold
+        if distance_weight is None:
+            self.distance_weight = 1.5
+        else:
+            self.distance_weight = distance_weight
+        if num_smoothing is None:
+            self.num_smoothing = 6
+        else:
+            self.num_smoothing = num_smoothing
 
-        if '-th' in sys.argv:
+        if '-th' in sys.argv and self.threshold is None:
             self.threshold = float(sys.argv[sys.argv.index('-th') + 1])
-        if '-sm' in sys.argv:
+        if '-sm' in sys.argv and self.num_smoothing is None:
             self.num_smoothing = int(sys.argv[sys.argv.index('-sm') + 1])
+        if '-i' in sys.argv:
+            self.input = sys.argv[sys.argv.index('-i') + 1]
 
         arg_dict = {
             '-a': False,
@@ -79,6 +94,7 @@ class Detector:
             '-s': False,
             '-sm': False,
             '-sh': False,
+            '-i': False,
         }
         for arg in list(arg_dict.keys()):
             if arg in sys.argv:
@@ -113,112 +129,167 @@ class Detector:
             files.extend(glob.glob(join(faces_folder_path + '/**/', ext), recursive=True))
         files = sorted([f for f in files if '_detected' not in f])
 
-        for index, f in enumerate(files):
-            print("Processing file: {}".format(f))
-            num_smoothing = self.num_smoothing
-            f_arr = [files[index + i] for i in range(-num_smoothing, num_smoothing) if
-                     (index + i) in range(0, len(files))]
-            img_arr = [misc.imread(file, mode='RGB') for file in f_arr]
-            img_arr = [misc.imresize(img, (960, 1280)) for img in img_arr]
-            if index >= num_smoothing:
-                img = img_arr[num_smoothing]
-            else:
-                img = img_arr[index]
-            scaled_width = img.shape[1]
-            scaled_height = img.shape[0]
-            detected = False
-            if self.win:
-                self.win.clear_overlay()
-                self.win.set_image(img)
-            if self.smooth:
-                if self.nose and self.crop and img_arr and f_arr:
-                    crop_im_arr_arr = [
-                        self.crop_predictor(img, f, scaled_height=scaled_height, scaled_width=scaled_width) for img, f
-                        in zip(img_arr, f_arr) if img is not None and f is not None]
-                    if index >= num_smoothing:
-                        crop_im_arr = crop_im_arr_arr[num_smoothing]
-                    else:
-                        crop_im_arr = crop_im_arr_arr[index]
-                    if crop_im_arr is not None:
-                        crop_im = crop_im_arr[0]
-                        x_min = crop_im_arr[1]
-                        y_min = crop_im_arr[2]
-                        x_max = crop_im_arr[3]
-                        y_max = crop_im_arr[4]
-                        if crop_im is not None and f_arr is not None and crop_im_arr_arr is not None:
-                            scores_dict_arr = [self.show_face(f, crop_im_array[0], detected, show=False) for
-                                               f, crop_im_array in
-                                               zip(f_arr, crop_im_arr_arr) if
-                                               f is not None and crop_im_array is not None]
-                            all_scores = [item for sublist in [dicti.keys() for dicti in scores_dict_arr] for item in
-                                          sublist]
-                            if all_scores is not None and all_scores:
-                                max_score = max(all_scores)
-                                for score_dict in scores_dict_arr:
-                                    if max_score in score_dict.keys():
-                                        scores_dict = score_dict
+        self.crop_im_arr_arr = [
+            self.crop_predictor(img, f, scaled_height=img.shape[0], scaled_width=img.shape[1]) for img, f in
+            zip(self.make_img_arr(files), files) if img is not None and f is not None]
+        self.scores_dict_arr = {index: self.show_face(f, crop_im_array[0], detected=False, show=False) for
+                                index, (f, crop_im_array) in
+                                enumerate(zip(files, self.crop_im_arr_arr)) if
+                                f is not None and crop_im_array is not None}
 
-                                if not self.all:
-                                    max_score, max_d = self.find_maxes(scores_dict)
-                                    if max_score is not None:
-                                        old_top = max_d.top()
-                                        old_left = max_d.left()
-                                        old_right = max_d.right()
-                                        old_bottom = max_d.bottom()
-                                        if self.win:
+        for thresh in np.arange(-1, 1, .1):
+            for distance_weight in np.arange(1, 4, .2):
+                for num_smoothing in np.arange(6, 30, 1):
+                    self.threshold = thresh
+                    self.distance_weight = distance_weight
+                    self.num_smoothing = num_smoothing
+                    # Preload predictions for each frame
+                    self.max_score_arr = {index: self.find_maxes(scores_dict) for index, scores_dict in
+                                          self.scores_dict_arr.items() if scores_dict}
+                    for index, (max_score, max_d) in self.max_score_arr.items():
+                        crop_im_arr = self.crop_im_arr_arr[index]
+                        if crop_im_arr is not None:
+                            x_min = crop_im_arr[1]
+                            y_min = crop_im_arr[2]
+                            x_max = crop_im_arr[3]
+                            y_max = crop_im_arr[4]
+                        if max_score is not None:
+                            old_top = max_d.top()
+                            old_left = max_d.left()
+                            old_right = max_d.right()
+                            old_bottom = max_d.bottom()
+                            new_top = int(old_top + y_min)
+                            new_left = int(old_left + x_min)
+                            new_right = int(old_right + x_min)
+                            new_bottom = int(old_bottom + y_min)
+                            new_d = dlib.rectangle(left=new_left, top=new_top, right=new_right,
+                                                   bottom=new_bottom)
+                            self.max_score_arr[index] = (max_score, new_d)
+                    self.shape_arr = {index: self.make_shape(score, image, d, show=False, save=False) for
+                                      image, (index, (score, d))
+                                      in zip(self.make_img_arr(files), self.max_score_arr.items()) if
+                                      image is not None and score is not None and d is not None}
+
+                    for index, f in enumerate(files):
+                        print("Processing file: {}".format(f))
+                        num_smoothing = self.num_smoothing
+                        img = misc.imread(f, mode='RGB')
+                        img = misc.imresize(img, (960, 1280))
+                        scaled_width = img.shape[1]
+                        scaled_height = img.shape[0]
+                        curr_im_index = None
+                        detected = False
+                        if self.win:
+                            self.win.clear_overlay()
+                            self.win.set_image(img)
+                        if self.smooth:
+                            if self.nose and self.crop:
+                                crop_im_arr_arr = [self.crop_im_arr_arr[i] for i in
+                                                   range(index - num_smoothing, index + num_smoothing) if
+                                                   (index + i) in range(0, len(self.crop_im_arr_arr))]
+                                f_arr = [files[i] for i in range(index - num_smoothing, index + num_smoothing) if
+                                         (index + i) in range(0, len(files))]
+                                crop_im_arr = self.crop_im_arr_arr[index]
+                                if crop_im_arr is not None:
+                                    crop_im = crop_im_arr[0]
+                                    if crop_im is not None and f_arr is not None and crop_im_arr_arr is not None:
+                                        max_score_arr = {(index + i): self.max_score_arr[(index + i)] for i in
+                                                         range(index - num_smoothing, index + num_smoothing) if
+                                                         (index + i) in self.max_score_arr.keys()}
+                                        # scores_dict_arr = [self.scores_dict_arr[i] for i in
+                                        #                   range(index - num_smoothing, index + num_smoothing) if
+                                        #                   (index + i) in range(0, len(self.scores_dict_arr))]
+                                        shape_arr = {(index + i): self.shape_arr[(index + i)] for i in
+                                                     range(index - num_smoothing, index + num_smoothing) if
+                                                     (index + i) in self.shape_arr.keys()}
+                                        if max_score_arr:
+                                            self.show_average_face(f, img, index, max_score_arr, shape_arr, show=True)
+
+                                            # This code gives you the best face instead of the average smoothed face, which is not as good
+
+                                            # all_scores = [item for sublist in (dicti.keys() for dicti in scores_dict_arr) for item in
+                                            #               sublist]
+                                            # if all_scores is not None and all_scores:
+                                            #     max_score = max(all_scores)
+                                            #     for score_dict in scores_dict_arr:
+                                            #         if max_score in score_dict.keys():
+                                            #             scores_dict = score_dict
+                                            #
+                                            #     if not self.all:
+                                            #         max_score, max_d = self.find_maxes(scores_dict)
+                                            #         if max_score is not None:
+                                            #             old_top = max_d.top()
+                                            #             old_left = max_d.left()
+                                            #             old_right = max_d.right()
+                                            #             old_bottom = max_d.bottom()
+                                            #             if self.win:
+                                            #                 self.win.set_image(img)
+                                            #             new_top = int(old_top + y_min)
+                                            #             new_left = int(old_left + x_min)
+                                            #             new_right = int(old_right + x_min)
+                                            #             new_bottom = int(old_bottom + y_min)
+                                            #             new_d = dlib.rectangle(left=new_left, top=new_top, right=new_right,
+                                            #                                    bottom=new_bottom)
+                                            #             self.show_best_face(name=f, scores_dict=scores_dict, img=img, show=True,
+                                            #                                 max_score=max_score, max_d=new_d, save=True)
+
+
+                                else:
+                                    dir_name, base_name, split_name = self.splitname(f)
+                                    new_name = self.new_file_name(os.path.join(dir_name, 'detected/'), split_name,
+                                                                  '_detected')
+                                    img = cv2.cvtColor(img, cv2.COLOR_RGB2BGR)
+                                    cv2.imwrite(new_name, img)
+                            else:
+                                self.show_face(f, img, detected)
+                        else:
+                            if self.nose and self.crop:
+                                crop_im_arr = self.crop_predictor(img, f, scaled_height=scaled_height,
+                                                                  scaled_width=scaled_width)
+                                if crop_im_arr is not None:
+                                    crop_im = crop_im_arr[0]
+                                    x_min = crop_im_arr[1]
+                                    y_min = crop_im_arr[2]
+                                    x_max = crop_im_arr[3]
+                                    y_max = crop_im_arr[4]
+                                    scores_dict = self.show_face(f, crop_im, detected, show=False)
+
+                                    if not self.all:
+                                        max_score, max_d = self.find_maxes(scores_dict)
+                                        if max_score is not None:
+                                            old_top = max_d.top()
+                                            old_left = max_d.left()
+                                            old_right = max_d.right()
+                                            old_bottom = max_d.bottom()
                                             self.win.set_image(img)
-                                        new_top = int(old_top + y_min)
-                                        new_left = int(old_left + x_min)
-                                        new_right = int(old_right + x_min)
-                                        new_bottom = int(old_bottom + y_min)
-                                        new_d = dlib.rectangle(left=new_left, top=new_top, right=new_right,
-                                                               bottom=new_bottom)
-                                        self.show_best_face(name=f, scores_dict=scores_dict, img=img, show=True,
-                                                            max_score=max_score, max_d=new_d, save=True)
+                                            new_top = int(old_top + y_min)
+                                            new_left = int(old_left + x_min)
+                                            new_right = int(old_right + x_min)
+                                            new_bottom = int(old_bottom + y_min)
+                                            new_d = dlib.rectangle(left=new_left, top=new_top, right=new_right,
+                                                                   bottom=new_bottom)
+                                            self.show_best_face(name=f, scores_dict=scores_dict, img=img, show=True,
+                                                                max_score=max_score, max_d=new_d, save=True)
 
 
-                    else:
-                        dir_name, base_name, split_name = self.splitname(f)
-                        new_name = self.new_file_name(os.path.join(dir_name, 'detected/'), split_name, '_detected')
-                        img = cv2.cvtColor(img, cv2.COLOR_RGB2BGR)
-                        cv2.imwrite(new_name, img)
-                else:
-                    self.show_face(f, img, detected)
-            else:
-                if self.nose and self.crop:
-                    crop_im_arr = self.crop_predictor(img, f, scaled_height=scaled_height, scaled_width=scaled_width)
-                    if crop_im_arr is not None:
-                        crop_im = crop_im_arr[0]
-                        x_min = crop_im_arr[1]
-                        y_min = crop_im_arr[2]
-                        x_max = crop_im_arr[3]
-                        y_max = crop_im_arr[4]
-                        scores_dict = self.show_face(f, crop_im, detected, show=False)
-
-                        if not self.all:
-                            max_score, max_d = self.find_maxes(scores_dict)
-                            if max_score is not None:
-                                old_top = max_d.top()
-                                old_left = max_d.left()
-                                old_right = max_d.right()
-                                old_bottom = max_d.bottom()
-                                self.win.set_image(img)
-                                new_top = int(old_top + y_min)
-                                new_left = int(old_left + x_min)
-                                new_right = int(old_right + x_min)
-                                new_bottom = int(old_bottom + y_min)
-                                new_d = dlib.rectangle(left=new_left, top=new_top, right=new_right, bottom=new_bottom)
-                                self.show_best_face(name=f, scores_dict=scores_dict, img=img, show=True,
-                                                    max_score=max_score, max_d=new_d, save=True)
-
-
-                    else:
-                        dir_name, base_name, split_name = self.splitname(f)
-                        new_name = self.new_file_name(os.path.join(dir_name, 'detected/'), split_name, '_detected')
-                        img = cv2.cvtColor(img, cv2.COLOR_RGB2BGR)
-                        cv2.imwrite(new_name, img)
-                else:
-                    self.show_face(f, img, detected)
+                                else:
+                                    dir_name, base_name, split_name = self.splitname(f)
+                                    new_name = self.new_file_name(os.path.join(dir_name, 'detected/'), split_name,
+                                                                  '_detected')
+                                    img = cv2.cvtColor(img, cv2.COLOR_RGB2BGR)
+                                    cv2.imwrite(new_name, img)
+                            else:
+                                self.show_face(f, img, detected)
+                    subprocess.Popen("ffmpeg -r 60 -f image2 -s 1920x1080 -pattern_type glob -i '{0}' -vcodec libx264 "
+                                     "-crf 5 -pix_fmt yuv420p {1}".format('*.png',
+                                                                          os.path.join(vid_path, 'thresh_' + str(
+                                                                              thresh).replace('.', '') + 'dis_' + str(
+                                                                              distance_weight).replace('.',
+                                                                                                       '') + 'num_smoothing' + str(
+                                                                              num_smoothing).replace('.',
+                                                                                                     '') + '.mp4')),
+                                     cwd=detected_path,
+                                     shell=True).wait()
 
     def overlay(self, shape, d):
         if self.win:
@@ -328,6 +399,41 @@ class Detector:
     def new_file_name(dir_name, split_name, addition):
         return os.path.join(dir_name, split_name[0] + addition + split_name[1])
 
+    def show_average_face(self, name, img, curr_index, scores_dict, shape_arr, show=False):
+        # Normalize Scores
+        norm_scores = {i: ((scores_dict[i][0] + 1) / 2) for i in list(scores_dict.keys()) if
+                       scores_dict[i][0] is not None}
+        # change scores by half distance from center
+        norm_scores = {index: score / ((1 / self.distance_weight) * (abs(index - curr_index) + 1)) for index, score in
+                       norm_scores.items()}
+        d_arr = [scores_dict[i][1] for i in list(norm_scores.keys())]
+        x_arr = [[shape_arr[j].part(i).x for i in range(shape_arr[j].num_parts)] for j in list(norm_scores.keys())]
+        y_arr = [[shape_arr[j].part(i).y for i in range(shape_arr[j].num_parts)] for j in list(norm_scores.keys())]
+        score_arr = [norm_scores[i] for i in list(norm_scores.keys())]
+        if score_arr:
+            average_x_arr = np.average(x_arr, axis=0, weights=score_arr).astype(int)
+            average_y_arr = np.average(y_arr, axis=0, weights=score_arr).astype(int)
+
+            left_arr = np.array([d.left() for d in d_arr])
+            top_arr = np.array([d.top() for d in d_arr])
+            right_arr = np.array([d.right() for d in d_arr])
+            bottom_arr = np.array([d.bottom() for d in d_arr])
+            average_left = np.average(left_arr, weights=score_arr).astype(int)
+            average_top = np.average(top_arr, weights=score_arr).astype(int)
+            average_right = np.average(right_arr, weights=score_arr).astype(int)
+            average_bottom = np.average(bottom_arr, weights=score_arr).astype(int)
+
+            dir_name, basename, split_name = self.splitname(name)
+            new_name = self.new_file_name(os.path.join(dir_name, 'detected/'), split_name,
+                                          '_detected')
+            img = cv2.cvtColor(img, cv2.COLOR_RGB2BGR)
+            box = cv2.rectangle(img, (average_left, average_top), (average_right, average_bottom), color=(255, 0, 0))
+            for dot in zip(average_x_arr, average_y_arr):
+                cv_dot = cv2.circle(img, (dot[0], dot[1]), 3, (0, 0, 255))
+            cv2.imwrite(new_name, img)
+            if show:
+                self.win.set_image(misc.imresize(misc.imread(new_name, mode='RGB'), (960, 1280)))
+
     def show_best_face(self, name, scores_dict, img, show=True, max_score=None, max_d=None, save=False):
         if max_score is None and max_d is None:
             max_score, max_d = self.find_maxes(scores_dict)
@@ -337,17 +443,21 @@ class Detector:
             shape = None
             print("Detection {}, score: {}, face_type:{}".format(
                 max_d, max_score, max_i))
-            if self.threshold is not None and max_score is not None and max_score > self.threshold:
-                shape = self.predictor(img, max_d)
-                print("Left: {} Top: {} Right: {} Bottom: {}".format(max_d.left(), max_d.top(), max_d.right(),
-                                                                     max_d.bottom()))
-                # Draw the face landmarks on the screen.
-                if show:
-                    self.overlay(shape, max_d)
-                if self.pause:
-                    dlib.hit_enter_to_continue()
-                if save and self.save:
-                    self.save_im(name, shape, max_d, scale=True)
+            self.make_shape(max_score, img, max_d, show, save, name=name)
+
+    def make_shape(self, max_score, img, max_d, show, save, name=None):
+        if self.threshold is not None and max_score is not None and max_score > self.threshold:
+            shape = self.predictor(img, max_d)
+            print("Left: {} Top: {} Right: {} Bottom: {}".format(max_d.left(), max_d.top(), max_d.right(),
+                                                                 max_d.bottom()))
+            # Draw the face landmarks on the screen.
+            if show:
+                self.overlay(shape, max_d)
+            if self.pause:
+                dlib.hit_enter_to_continue()
+            if save and self.save:
+                self.save_im(name, shape, max_d, scale=True)
+            return shape
 
     def save_im(self, name, shape, d, scale):
         img = cv2.imread(name)
@@ -360,7 +470,15 @@ class Detector:
             cv_dot = cv2.circle(img, (dot.x, dot.y), 3, (0, 0, 255))
         cv2.imwrite(new_name, img)
 
+    @staticmethod
+    def make_img_arr(files):
+        img_arr = (misc.imread(file, mode='RGB') for file in files)
+        img_arr = (misc.imresize(img, (960, 1280)) for img in img_arr)
+        return img_arr
+
     def show_face(self, name, img, detected, show=True):
+        if show and self.win:
+            self.win.set_image(img)
         dets, scores, idx = self.detector.run(img, 1, -1)
         scores_dict = defaultdict()
         print("Number of faces detected: {}".format(len(dets)))
@@ -397,10 +515,18 @@ class Detector:
             return None, None
 
     @staticmethod
+    def write_to_im(new_name, img):
+        img = cv2.cvtColor(img, cv2.COLOR_RGB2BGR)
+        cv2.imwrite(new_name, img)
+
+    @staticmethod
     def find_txt_files(path):
         return {os.path.splitext(os.path.basename(v))[0]: v for v in
                 glob.iglob(os.path.join(path + '/**/*.txt'), recursive=True)}
 
 
 if __name__ == '__main__':
+    faces_folder_path = sys.argv[2]
+    detected_path = os.path.join(faces_folder_path, "detected/")
+    vid_path = os.path.join(detected_path, "videos/")
     det = Detector()
