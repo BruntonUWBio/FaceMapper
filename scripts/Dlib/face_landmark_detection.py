@@ -137,7 +137,7 @@ class Detector:
                                 enumerate(zip(files, self.crop_im_arr_arr)) if
                                 f is not None and crop_im_array is not None}
 
-        for thresh in np.arange(-1, 1, .1):
+        for thresh in np.arange(-.8, .5, .1):
             for distance_weight in np.arange(1, 4, .2):
                 for num_smoothing in np.arange(6, 30, 1):
                     self.threshold = thresh
