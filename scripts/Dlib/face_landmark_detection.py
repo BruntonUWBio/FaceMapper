@@ -281,7 +281,7 @@ class Detector:
                                     cv2.imwrite(new_name, img)
                             else:
                                 self.show_face(f, img, detected)
-                    subprocess.Popen("ffmpeg -r 60 -f image2 -s 1920x1080 -pattern_type glob -i '{0}' "
+                    subprocess.Popen("ffmpeg -r 30 -f image2 -s 1920x1080 -pattern_type glob -i '{0}' "
                                      "-b 2000k {1}".format('*.png',
                                                                           os.path.join(vid_path, 'thresh_' + str(
                                                                               thresh).replace('.', '') + 'dis_' + str(
@@ -469,7 +469,7 @@ class Detector:
         for i in range(shape.num_parts):
             dot = shape.part(i)
             cv_dot = cv2.circle(img, (dot.x, dot.y), 3, (0, 0, 255))
-        cv2.imwrite(new_name, img)
+        cv2.imwrite(new_name, img[100:800, 300:800])  # Saves cropped image, change cropping dimensions if necessary
 
     @staticmethod
     def make_img_arr(files):
