@@ -1,4 +1,8 @@
 #!/usr/bin/python
+# Based on Dlib example program, copyright below:
+#
+#
+#
 # The contents of this file are in the public domain. See LICENSE_FOR_EXAMPLE_PROGRAMS.txt
 #
 #   This example program shows how to find frontal human faces in an image and
@@ -206,35 +210,6 @@ class Detector:
                                             self.show_average_face(f, img, index, max_score_arr, shape_arr,
                                                                    show=self.show)
 
-                                            # This code gives you the best face instead of the average smoothed face, which is not as good
-
-                                            # all_scores = [item for sublist in (dicti.keys() for dicti in scores_dict_arr) for item in
-                                            #               sublist]
-                                            # if all_scores is not None and all_scores:
-                                            #     max_score = max(all_scores)
-                                            #     for score_dict in scores_dict_arr:
-                                            #         if max_score in score_dict.keys():
-                                            #             scores_dict = score_dict
-                                            #
-                                            #     if not self.all:
-                                            #         max_score, max_d = self.find_maxes(scores_dict)
-                                            #         if max_score is not None:
-                                            #             old_top = max_d.top()
-                                            #             old_left = max_d.left()
-                                            #             old_right = max_d.right()
-                                            #             old_bottom = max_d.bottom()
-                                            #             if self.win:
-                                            #                 self.win.set_image(img)
-                                            #             new_top = int(old_top + y_min)
-                                            #             new_left = int(old_left + x_min)
-                                            #             new_right = int(old_right + x_min)
-                                            #             new_bottom = int(old_bottom + y_min)
-                                            #             new_d = dlib.rectangle(left=new_left, top=new_top, right=new_right,
-                                            #                                    bottom=new_bottom)
-                                            #             self.show_best_face(name=f, scores_dict=scores_dict, img=img, show=True,
-                                            #                                 max_score=max_score, max_d=new_d, save=True)
-
-
                                 else:
                                     dir_name, base_name, split_name = self.splitname(f)
                                     new_name = self.new_file_name(os.path.join(dir_name, 'detected/'), split_name,
@@ -283,12 +258,12 @@ class Detector:
                                 self.show_face(f, img, detected)
                     subprocess.Popen("ffmpeg -r 30 -f image2 -s 1920x1080 -pattern_type glob -i '{0}' "
                                      "-b 2000k {1}".format('*.png',
-                                                                          os.path.join(vid_path, 'thresh_' + str(
-                                                                              thresh).replace('.', '') + 'dis_' + str(
-                                                                              distance_weight).replace('.',
-                                                                                                       '') + 'num_smoothing' + str(
-                                                                              num_smoothing).replace('.',
-                                                                                                     '') + '.mp4')),
+                                                           os.path.join(vid_path, 'thresh_' + str(
+                                                               thresh).replace('.', '') + 'dis_' + str(
+                                                               distance_weight).replace('.',
+                                                                                        '') + 'num_smoothing' + str(
+                                                               num_smoothing).replace('.',
+                                                                                      '') + '.mp4')),
                                      cwd=detected_path,
                                      shell=True).wait()
 
@@ -405,8 +380,13 @@ class Detector:
         norm_scores = {i: ((scores_dict[i][0] + 1) / 2) for i in list(scores_dict.keys()) if
                        scores_dict[i][0] is not None}
         # change scores by half distance from center
-        norm_scores = {index: score / ((1 / self.distance_weight) * (abs(index - curr_index) + 1)) for index, score in
-                       norm_scores.items()}
+        # norm_scores = {index: score / ((1 / self.distance_weight) * (abs(index - curr_index) + 1)) for index, score in
+        #               norm_scores.items()}
+        # Change scores to be a Gaussian distribution
+        gauss = np.random.normal(0, 1 / self.distance_weight, len((norm_scores.keys())))
+        # Adding the scores to the Gaussian function, other option is to multiply them
+        norm_scores = {index: norm_scores[index] + gauss[index] for index in list(norm_scores.keys())}
+
         d_arr = [scores_dict[i][1] for i in list(norm_scores.keys())]
         x_arr = [[shape_arr[j].part(i).x for i in range(shape_arr[j].num_parts)] for j in list(norm_scores.keys())]
         y_arr = [[shape_arr[j].part(i).y for i in range(shape_arr[j].num_parts)] for j in list(norm_scores.keys())]
@@ -429,11 +409,12 @@ class Detector:
                                           '_detected')
             img = cv2.cvtColor(img, cv2.COLOR_RGB2BGR)
             box = cv2.rectangle(img, (average_left, average_top), (average_right, average_bottom), color=(255, 0, 0))
-            for dot in zip(average_x_arr, average_y_arr):
-                cv_dot = cv2.circle(img, (dot[0], dot[1]), 3, (0, 0, 255))
+            x_y_arr = zip(average_x_arr, average_y_arr)
+            cv_dot_arr = [cv2.circle(img, (dot[0], dot[1]), 3, (0, 0, 255)) for dot in x_y_arr]
             cv2.imwrite(new_name, img)
             if show:
                 self.win.set_image(misc.imresize(misc.imread(new_name, mode='RGB'), (960, 1280)))
+            return x_y_arr
 
     def show_best_face(self, name, scores_dict, img, show=True, max_score=None, max_d=None, save=False):
         if max_score is None and max_d is None:
