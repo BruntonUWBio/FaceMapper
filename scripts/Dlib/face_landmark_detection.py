@@ -353,12 +353,12 @@ class Detector:
             return file_dict
 
     def crop_predictor(self, img, name, scaled_width, scaled_height):
-        #print('Name: {0}'.format(name))
+        print('Name: {0}'.format(name))
         dir_name = os.path.dirname(name)
         base_name = os.path.basename(name)
         split_name = os.path.splitext(base_name)
         crop_file_path, file_num = self.find_crop_path(base_name, self.crop_txt_files)
-        #print('Crop file: {0}'.format(crop_file_path))
+        print('Crop file: {0}'.format(crop_file_path))
         x_min = 0
         y_min = 0
         x_max = 0
@@ -375,7 +375,7 @@ class Detector:
                 y_max = curr_im_coords[3] * scaled_height / 480
 
         nose_file_path, file_num = self.find_crop_path(base_name, self.nose_txt_files)
-        #print('Nose file: {0}'.format(nose_file_path))
+        print('Nose file: {0}'.format(nose_file_path))
         if nose_file_path is not None:
             f = open(nose_file_path)
             readArr = self.make_read_arr(f, 3)
@@ -383,7 +383,7 @@ class Detector:
             i = file_num - 1
             if len(readArr) > i:
                 confidence = readArr[i][2]
-                #print('Crop Confidence: {0}'.format(confidence))
+                print('Crop Confidence: {0}'.format(confidence))
                 if confidence > .25:
                     x_center = readArr[i][0]
                     y_center = readArr[i][1]
@@ -508,7 +508,7 @@ class Detector:
             self.win.set_image(img)
         dets, scores, idx = self.detector.run(img, 1, -1)
         scores_dict = defaultdict()
-        print("Number of faces detected: {}".format(len(dets)))
+        # print("Number of faces detected: {}".format(len(dets)))
 
         for i, d in enumerate(dets):
             score = scores[i]
