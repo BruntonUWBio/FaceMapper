@@ -146,9 +146,9 @@ class Detector:
                                     enumerate(zip(files, self.crop_im_arr_arr)) if
                                     f is not None and crop_im_array is not None}
 
-            for thresh in np.arange(-.3, .5, .1):
-                for distance_weight in np.arange(2, 4, .2):
-                    for num_smoothing in np.arange(6, 12, 1):
+            for thresh in np.arange(-1, .5, .1):
+                for distance_weight in np.arange(1, 6, .2):
+                    for num_smoothing in np.arange(1, 30, 1):
                         std_devs = []
                         self.threshold = thresh
                         self.distance_weight = distance_weight
@@ -280,13 +280,14 @@ class Detector:
                                     self.show_face(f, img, detected)
                         self.optim_dict[np.average(std_devs)] = out_str
                         print(out_str + " Score: " + str(np.average(std_devs)))
+                        # subprocess.Popen("ffmpeg -r 30 -f image2 -s 1920x1080 -pattern_type glob -i '{0}' "
+                        #                  "-b 2000k {1}".format('*.png',
+                        #                                        out_str + '.mp4'),
+                        #                  cwd=detected_path,
+                        #                  shell=True).wait()
             for score in sorted(self.optim_dict.keys()):
                 out_writer.writerow([str(score)] + self.optim_dict[score])
-                # subprocess.Popen("ffmpeg -r 30 -f image2 -s 1920x1080 -pattern_type glob -i '{0}' "
-                #                  "-b 2000k {1}".format('*.png',
-                #                                        out_str + '.mp4'),
-                #                  cwd=detected_path,
-                #                  shell=True).wait()
+
 
     def overlay(self, shape, d):
         if self.win:
