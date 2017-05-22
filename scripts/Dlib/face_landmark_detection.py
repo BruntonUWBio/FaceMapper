@@ -187,7 +187,7 @@ class Detector:
                                           image is not None and score is not None and d is not None}
 
                         for index, f in enumerate(files):
-                            print("Processing file: {}".format(f))
+                            # print("Processing file: {}".format(f))
                             num_smoothing = self.num_smoothing
                             img = misc.imread(f, mode='RGB')
                             img = misc.imresize(img, (960, 1280))
@@ -279,6 +279,7 @@ class Detector:
                                 else:
                                     self.show_face(f, img, detected)
                         self.optim_dict[np.average(std_devs)] = out_str
+                        print(out_str + " Score: " + str(np.average(std_devs)))
             for score in sorted(self.optim_dict.keys()):
                 out_writer.writerow([str(score)] + self.optim_dict[score])
                 # subprocess.Popen("ffmpeg -r 30 -f image2 -s 1920x1080 -pattern_type glob -i '{0}' "
@@ -352,12 +353,12 @@ class Detector:
             return file_dict
 
     def crop_predictor(self, img, name, scaled_width, scaled_height):
-        print('Name: {0}'.format(name))
+        #print('Name: {0}'.format(name))
         dir_name = os.path.dirname(name)
         base_name = os.path.basename(name)
         split_name = os.path.splitext(base_name)
         crop_file_path, file_num = self.find_crop_path(base_name, self.crop_txt_files)
-        print('Crop file: {0}'.format(crop_file_path))
+        #print('Crop file: {0}'.format(crop_file_path))
         x_min = 0
         y_min = 0
         x_max = 0
@@ -374,7 +375,7 @@ class Detector:
                 y_max = curr_im_coords[3] * scaled_height / 480
 
         nose_file_path, file_num = self.find_crop_path(base_name, self.nose_txt_files)
-        print('Nose file: {0}'.format(nose_file_path))
+        #print('Nose file: {0}'.format(nose_file_path))
         if nose_file_path is not None:
             f = open(nose_file_path)
             readArr = self.make_read_arr(f, 3)
@@ -382,7 +383,7 @@ class Detector:
             i = file_num - 1
             if len(readArr) > i:
                 confidence = readArr[i][2]
-                print('Crop Confidence: {0}'.format(confidence))
+                #print('Crop Confidence: {0}'.format(confidence))
                 if confidence > .25:
                     x_center = readArr[i][0]
                     y_center = readArr[i][1]
@@ -474,8 +475,8 @@ class Detector:
     def make_shape(self, max_score, img, max_d, show, save, name=None):
         if self.threshold is not None and max_score is not None and max_score > self.threshold:
             shape = self.predictor(img, max_d)
-            print("Left: {} Top: {} Right: {} Bottom: {}".format(max_d.left(), max_d.top(), max_d.right(),
-                                                                 max_d.bottom()))
+            # print("Left: {} Top: {} Right: {} Bottom: {}".format(max_d.left(), max_d.top(), max_d.right(),
+            #                                                     max_d.bottom()))
             # Draw the face landmarks on the screen.
             if show:
                 self.overlay(shape, max_d)
