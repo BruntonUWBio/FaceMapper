@@ -280,7 +280,7 @@ class Detector:
                                 self.show_face(f, img, detected)
                     self.optim_dict[np.average(std_devs)] = out_str
                     print(out_str + " Score: " + str(np.average(std_devs)))
-                    out_writer.writerow(np.average(std_devs) + self.optim_dict[np.average(std_devs)])
+                    out_writer.writerow([str(np.average(std_devs)), str(self.optim_dict[np.average(std_devs)])])
                     # subprocess.Popen("ffmpeg -r 30 -f image2 -s 1920x1080 -pattern_type glob -i '{0}' "
                     #                  "-b 2000k {1}".format('*.png',
                     #                                        out_str + '.mp4'),
