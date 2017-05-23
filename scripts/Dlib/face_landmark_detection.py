@@ -133,7 +133,7 @@ class Detector:
             files.extend(glob.glob(join(faces_folder_path + '/**/', ext), recursive=True))
         files = sorted([f for f in files if '_detected' not in f])
 
-        with open(os.path.join(faces_folder_path, self.threshold + 'out.csv'), 'w') as outfile:
+        with open(os.path.join(faces_folder_path, str(self.threshold) + 'out.csv'), 'w') as outfile:
             out_writer = csv.writer(outfile)
             self.ref_dict = self.open_csv_file(os.path.join(faces_folder_path, 'cb46fd46_5_coordinates.csv'))
             self.ref_indexes = list(self.ref_dict.keys())
