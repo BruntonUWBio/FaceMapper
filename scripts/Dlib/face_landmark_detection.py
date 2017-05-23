@@ -133,7 +133,7 @@ class Detector:
             files.extend(glob.glob(join(faces_folder_path + '/**/', ext), recursive=True))
         files = sorted([f for f in files if '_detected' not in f])
 
-        with open(os.path.join(faces_folder_path, 'out.csv'), 'w') as outfile:
+        with open(os.path.join(faces_folder_path, self.threshold + 'out.csv'), 'w') as outfile:
             out_writer = csv.writer(outfile)
             self.ref_dict = self.open_csv_file(os.path.join(faces_folder_path, 'cb46fd46_5_coordinates.csv'))
             self.ref_indexes = list(self.ref_dict.keys())
@@ -146,148 +146,148 @@ class Detector:
                                     enumerate(zip(files, self.crop_im_arr_arr)) if
                                     f is not None and crop_im_array is not None}
 
-            for thresh in np.arange(-.8, .5, .2):
-                for distance_weight in np.arange(1, 6, 1):
-                    for num_smoothing in np.arange(1, 15, 3):
-                        std_devs = []
-                        self.threshold = thresh
-                        self.distance_weight = distance_weight
-                        self.num_smoothing = num_smoothing
-                        out_str = os.path.join(vid_path, 'thresh_' + str(
-                            thresh).replace('.', '') + 'dis_' + str(
-                            distance_weight).replace('.',
-                                                     '') + 'num_smoothing' + str(
-                            num_smoothing).replace('.',
-                                                   ''))
-                        # Preload predictions for each frame
-                        self.max_score_arr = {index: self.find_maxes(scores_dict) for index, scores_dict in
-                                              self.scores_dict_arr.items() if scores_dict}
-                        for index, (max_score, max_d) in self.max_score_arr.items():
-                            crop_im_arr = self.crop_im_arr_arr[index]
-                            if crop_im_arr is not None:
-                                x_min = crop_im_arr[1]
-                                y_min = crop_im_arr[2]
-                                x_max = crop_im_arr[3]
-                                y_max = crop_im_arr[4]
-                            if max_score is not None:
-                                old_top = max_d.top()
-                                old_left = max_d.left()
-                                old_right = max_d.right()
-                                old_bottom = max_d.bottom()
-                                new_top = int(old_top + y_min)
-                                new_left = int(old_left + x_min)
-                                new_right = int(old_right + x_min)
-                                new_bottom = int(old_bottom + y_min)
-                                new_d = dlib.rectangle(left=new_left, top=new_top, right=new_right,
-                                                       bottom=new_bottom)
-                                self.max_score_arr[index] = (max_score, new_d)
-                        self.shape_arr = {index: self.make_shape(score, image, d, show=False, save=False) for
-                                          image, (index, (score, d))
-                                          in zip(self.make_img_arr(files), self.max_score_arr.items()) if
-                                          image is not None and score is not None and d is not None}
+            # for thresh in np.arange(-.8, .5, .2):
+            for distance_weight in np.arange(1, 6, 1):
+                for num_smoothing in np.arange(1, 15, 3):
+                    std_devs = []
+                    # self.threshold = self.threshold
+                    self.distance_weight = distance_weight
+                    self.num_smoothing = num_smoothing
+                    out_str = os.path.join(vid_path, 'thresh_' + str(
+                        self.threshold).replace('.', '') + 'dis_' + str(
+                        distance_weight).replace('.',
+                                                 '') + 'num_smoothing' + str(
+                        num_smoothing).replace('.',
+                                               ''))
+                    # Preload predictions for each frame
+                    self.max_score_arr = {index: self.find_maxes(scores_dict) for index, scores_dict in
+                                          self.scores_dict_arr.items() if scores_dict}
+                    for index, (max_score, max_d) in self.max_score_arr.items():
+                        crop_im_arr = self.crop_im_arr_arr[index]
+                        if crop_im_arr is not None:
+                            x_min = crop_im_arr[1]
+                            y_min = crop_im_arr[2]
+                            x_max = crop_im_arr[3]
+                            y_max = crop_im_arr[4]
+                        if max_score is not None:
+                            old_top = max_d.top()
+                            old_left = max_d.left()
+                            old_right = max_d.right()
+                            old_bottom = max_d.bottom()
+                            new_top = int(old_top + y_min)
+                            new_left = int(old_left + x_min)
+                            new_right = int(old_right + x_min)
+                            new_bottom = int(old_bottom + y_min)
+                            new_d = dlib.rectangle(left=new_left, top=new_top, right=new_right,
+                                                   bottom=new_bottom)
+                            self.max_score_arr[index] = (max_score, new_d)
+                    self.shape_arr = {index: self.make_shape(score, image, d, show=False, save=False) for
+                                      image, (index, (score, d))
+                                      in zip(self.make_img_arr(files), self.max_score_arr.items()) if
+                                      image is not None and score is not None and d is not None}
 
-                        for index, f in enumerate(files):
-                            # print("Processing file: {}".format(f))
-                            num_smoothing = self.num_smoothing
-                            img = misc.imread(f, mode='RGB')
-                            img = misc.imresize(img, (960, 1280))
-                            scaled_width = img.shape[1]
-                            scaled_height = img.shape[0]
-                            curr_im_index = None
-                            detected = False
-                            if self.win:
-                                self.win.clear_overlay()
-                                self.win.set_image(img)
-                            if self.smooth:
-                                if self.nose and self.crop:
-                                    crop_im_arr_arr = [self.crop_im_arr_arr[i] for i in
-                                                       range(index - num_smoothing, index + num_smoothing) if
-                                                       (index + i) in range(0, len(self.crop_im_arr_arr))]
-                                    f_arr = [files[i] for i in range(index - num_smoothing, index + num_smoothing) if
-                                             (index + i) in range(0, len(files))]
-                                    crop_im_arr = self.crop_im_arr_arr[index]
-                                    if crop_im_arr is not None:
-                                        crop_im = crop_im_arr[0]
-                                        if crop_im is not None and f_arr is not None and crop_im_arr_arr is not None:
-                                            max_score_arr = {(index + i): self.max_score_arr[(index + i)] for i in
-                                                             range(index - num_smoothing, index + num_smoothing) if
-                                                             (index + i) in self.max_score_arr.keys()}
-                                            # scores_dict_arr = [self.scores_dict_arr[i] for i in
-                                            #                   range(index - num_smoothing, index + num_smoothing) if
-                                            #                   (index + i) in range(0, len(self.scores_dict_arr))]
-                                            shape_arr = {(index + i): self.shape_arr[(index + i)] for i in
+                    for index, f in enumerate(files):
+                        # print("Processing file: {}".format(f))
+                        num_smoothing = self.num_smoothing
+                        img = misc.imread(f, mode='RGB')
+                        img = misc.imresize(img, (960, 1280))
+                        scaled_width = img.shape[1]
+                        scaled_height = img.shape[0]
+                        curr_im_index = None
+                        detected = False
+                        if self.win:
+                            self.win.clear_overlay()
+                            self.win.set_image(img)
+                        if self.smooth:
+                            if self.nose and self.crop:
+                                crop_im_arr_arr = [self.crop_im_arr_arr[i] for i in
+                                                   range(index - num_smoothing, index + num_smoothing) if
+                                                   (index + i) in range(0, len(self.crop_im_arr_arr))]
+                                f_arr = [files[i] for i in range(index - num_smoothing, index + num_smoothing) if
+                                         (index + i) in range(0, len(files))]
+                                crop_im_arr = self.crop_im_arr_arr[index]
+                                if crop_im_arr is not None:
+                                    crop_im = crop_im_arr[0]
+                                    if crop_im is not None and f_arr is not None and crop_im_arr_arr is not None:
+                                        max_score_arr = {(index + i): self.max_score_arr[(index + i)] for i in
                                                          range(index - num_smoothing, index + num_smoothing) if
-                                                         (index + i) in self.shape_arr.keys()}
-                                            if max_score_arr:
-                                                shape = self.show_average_face(f, img, index, max_score_arr, shape_arr,
-                                                                               show=self.show)
-                                                closest_ind = self.find_nearest(self.ref_indexes, index / 30)
-                                                ref_arr = [(arr[0], arr[1]) for arr in self.ref_dict[closest_ind]]
-                                                if shape:
-                                                    shape_sq = self.find_sq_tuple(shape)
-                                                    ref_sq = self.find_sq_tuple(ref_arr)
-                                                    ref_score = np.std(np.abs(np.subtract(ref_sq, shape_sq)))
-                                                    std_devs.append(ref_score)
+                                                         (index + i) in self.max_score_arr.keys()}
+                                        # scores_dict_arr = [self.scores_dict_arr[i] for i in
+                                        #                   range(index - num_smoothing, index + num_smoothing) if
+                                        #                   (index + i) in range(0, len(self.scores_dict_arr))]
+                                        shape_arr = {(index + i): self.shape_arr[(index + i)] for i in
+                                                     range(index - num_smoothing, index + num_smoothing) if
+                                                     (index + i) in self.shape_arr.keys()}
+                                        if max_score_arr:
+                                            shape = self.show_average_face(f, img, index, max_score_arr, shape_arr,
+                                                                           show=self.show)
+                                            closest_ind = self.find_nearest(self.ref_indexes, index / 30)
+                                            ref_arr = [(arr[0], arr[1]) for arr in self.ref_dict[closest_ind]]
+                                            if shape:
+                                                shape_sq = self.find_sq_tuple(shape)
+                                                ref_sq = self.find_sq_tuple(ref_arr)
+                                                ref_score = np.std(np.abs(np.subtract(ref_sq, shape_sq)))
+                                                std_devs.append(ref_score)
 
 
 
 
-                                    else:
-                                        dir_name, base_name, split_name = self.splitname(f)
-                                        new_name = self.new_file_name(os.path.join(dir_name, 'detected/'), split_name,
-                                                                      '_detected')
-                                        img = cv2.cvtColor(img, cv2.COLOR_RGB2BGR)
-                                        cv2.imwrite(new_name, img)
                                 else:
-                                    self.show_face(f, img, detected)
+                                    dir_name, base_name, split_name = self.splitname(f)
+                                    new_name = self.new_file_name(os.path.join(dir_name, 'detected/'), split_name,
+                                                                  '_detected')
+                                    img = cv2.cvtColor(img, cv2.COLOR_RGB2BGR)
+                                    cv2.imwrite(new_name, img)
                             else:
-                                if self.nose and self.crop:
-                                    crop_im_arr = self.crop_predictor(img, f, scaled_height=scaled_height,
-                                                                      scaled_width=scaled_width)
-                                    if crop_im_arr is not None:
-                                        crop_im = crop_im_arr[0]
-                                        x_min = crop_im_arr[1]
-                                        y_min = crop_im_arr[2]
-                                        x_max = crop_im_arr[3]
-                                        y_max = crop_im_arr[4]
-                                        scores_dict = self.show_face(f, crop_im, detected, show=False)
+                                self.show_face(f, img, detected)
+                        else:
+                            if self.nose and self.crop:
+                                crop_im_arr = self.crop_predictor(img, f, scaled_height=scaled_height,
+                                                                  scaled_width=scaled_width)
+                                if crop_im_arr is not None:
+                                    crop_im = crop_im_arr[0]
+                                    x_min = crop_im_arr[1]
+                                    y_min = crop_im_arr[2]
+                                    x_max = crop_im_arr[3]
+                                    y_max = crop_im_arr[4]
+                                    scores_dict = self.show_face(f, crop_im, detected, show=False)
 
-                                        if not self.all:
-                                            max_score, max_d = self.find_maxes(scores_dict)
-                                            if max_score is not None:
-                                                old_top = max_d.top()
-                                                old_left = max_d.left()
-                                                old_right = max_d.right()
-                                                old_bottom = max_d.bottom()
-                                                self.win.set_image(img)
-                                                new_top = int(old_top + y_min)
-                                                new_left = int(old_left + x_min)
-                                                new_right = int(old_right + x_min)
-                                                new_bottom = int(old_bottom + y_min)
-                                                new_d = dlib.rectangle(left=new_left, top=new_top, right=new_right,
-                                                                       bottom=new_bottom)
-                                                self.show_best_face(name=f, scores_dict=scores_dict, img=img, show=True,
-                                                                    max_score=max_score, max_d=new_d, save=True)
+                                    if not self.all:
+                                        max_score, max_d = self.find_maxes(scores_dict)
+                                        if max_score is not None:
+                                            old_top = max_d.top()
+                                            old_left = max_d.left()
+                                            old_right = max_d.right()
+                                            old_bottom = max_d.bottom()
+                                            self.win.set_image(img)
+                                            new_top = int(old_top + y_min)
+                                            new_left = int(old_left + x_min)
+                                            new_right = int(old_right + x_min)
+                                            new_bottom = int(old_bottom + y_min)
+                                            new_d = dlib.rectangle(left=new_left, top=new_top, right=new_right,
+                                                                   bottom=new_bottom)
+                                            self.show_best_face(name=f, scores_dict=scores_dict, img=img, show=True,
+                                                                max_score=max_score, max_d=new_d, save=True)
 
 
-                                    else:
-                                        dir_name, base_name, split_name = self.splitname(f)
-                                        new_name = self.new_file_name(os.path.join(dir_name, 'detected/'), split_name,
-                                                                      '_detected')
-                                        img = cv2.cvtColor(img, cv2.COLOR_RGB2BGR)
-                                        cv2.imwrite(new_name, img)
                                 else:
-                                    self.show_face(f, img, detected)
-                        self.optim_dict[np.average(std_devs)] = out_str
-                        print(out_str + " Score: " + str(np.average(std_devs)))
-                        out_writer.writerow(np.average(std_devs) + self.optim_dict[np.average(std_devs)])
-                        # subprocess.Popen("ffmpeg -r 30 -f image2 -s 1920x1080 -pattern_type glob -i '{0}' "
-                        #                  "-b 2000k {1}".format('*.png',
-                        #                                        out_str + '.mp4'),
-                        #                  cwd=detected_path,
-                        #                  shell=True).wait()
-                        # for score in sorted(self.optim_dict.keys()):
-                        #    out_writer.writerow([str(score)] + self.optim_dict[score])
+                                    dir_name, base_name, split_name = self.splitname(f)
+                                    new_name = self.new_file_name(os.path.join(dir_name, 'detected/'), split_name,
+                                                                  '_detected')
+                                    img = cv2.cvtColor(img, cv2.COLOR_RGB2BGR)
+                                    cv2.imwrite(new_name, img)
+                            else:
+                                self.show_face(f, img, detected)
+                    self.optim_dict[np.average(std_devs)] = out_str
+                    print(out_str + " Score: " + str(np.average(std_devs)))
+                    out_writer.writerow(np.average(std_devs) + self.optim_dict[np.average(std_devs)])
+                    # subprocess.Popen("ffmpeg -r 30 -f image2 -s 1920x1080 -pattern_type glob -i '{0}' "
+                    #                  "-b 2000k {1}".format('*.png',
+                    #                                        out_str + '.mp4'),
+                    #                  cwd=detected_path,
+                    #                  shell=True).wait()
+                    # for score in sorted(self.optim_dict.keys()):
+                    #    out_writer.writerow([str(score)] + self.optim_dict[score])
 
 
     def overlay(self, shape, d):
