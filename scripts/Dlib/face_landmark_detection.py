@@ -60,7 +60,7 @@ import cv2
 
 
 class Detector:
-    def __init__(self, threshold=None, distance_weight=None, num_smoothing=None):
+    def __init__(self):
         predictor_path = sys.argv[1]
         faces_folder_path = sys.argv[2]
 
@@ -69,18 +69,18 @@ class Detector:
         self.threshold = None
         self.num_smoothing = None
         self.win = None
-        if threshold is None:
-            self.threshold = -1
-        else:
-            self.threshold = threshold
-        if distance_weight is None:
-            self.distance_weight = 1.5
-        else:
-            self.distance_weight = distance_weight
-        if num_smoothing is None:
-            self.num_smoothing = 6
-        else:
-            self.num_smoothing = num_smoothing
+        # if threshold is None:
+        #     self.threshold = -1
+        # else:
+        #     self.threshold = threshold
+        # if distance_weight is None:
+        #     self.distance_weight = 1.5
+        # else:
+        #     self.distance_weight = distance_weight
+        # if num_smoothing is None:
+        #     self.num_smoothing = 6
+        # else:
+        #     self.num_smoothing = num_smoothing
 
         if '-th' in sys.argv and self.threshold is None:
             self.threshold = float(sys.argv[sys.argv.index('-th') + 1])
