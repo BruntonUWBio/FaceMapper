@@ -201,22 +201,22 @@ class Detector:
                         if self.smooth:
                             if self.nose and self.crop:
                                 crop_im_arr_arr = [self.crop_im_arr_arr[i] for i in
-                                                   range(index - num_smoothing, index + num_smoothing) if
+                                                   range(-num_smoothing, num_smoothing) if
                                                    (index + i) in range(0, len(self.crop_im_arr_arr))]
-                                f_arr = [files[i] for i in range(index - num_smoothing, index + num_smoothing) if
+                                f_arr = [files[i] for i in range(-num_smoothing, num_smoothing + 1) if
                                          (index + i) in range(0, len(files))]
                                 crop_im_arr = self.crop_im_arr_arr[index]
                                 if crop_im_arr is not None:
                                     crop_im = crop_im_arr[0]
                                     if crop_im is not None and f_arr is not None and crop_im_arr_arr is not None:
                                         max_score_arr = {(index + i): self.max_score_arr[(index + i)] for i in
-                                                         range(index - num_smoothing, index + num_smoothing) if
+                                                         range(-num_smoothing, num_smoothing + 1) if
                                                          (index + i) in self.max_score_arr.keys()}
                                         # scores_dict_arr = [self.scores_dict_arr[i] for i in
                                         #                   range(index - num_smoothing, index + num_smoothing) if
                                         #                   (index + i) in range(0, len(self.scores_dict_arr))]
                                         shape_arr = {(index + i): self.shape_arr[(index + i)] for i in
-                                                     range(index - num_smoothing, index + num_smoothing) if
+                                                     range(-num_smoothing, num_smoothing + 1) if
                                                      (index + i) in self.shape_arr.keys()}
                                         if max_score_arr:
                                             shape = self.show_average_face(f, img, index, max_score_arr, shape_arr,
@@ -432,7 +432,7 @@ class Detector:
         # Change scores to be a Gaussian distribution
         gauss = np.random.normal(0, 1 / self.distance_weight, len((norm_scores.keys())))
         # Multiply the scores to the Gaussian function, other option is to add them
-        norm_scores = {key: norm_scores[key] * gauss[index] for index, key in enumerate(norm_scores.keys())}
+        norm_scores = {key: norm_scores[key] + gauss[index] for index, key in enumerate(norm_scores.keys())}
 
         d_arr = [scores_dict[i][1] for i in list(norm_scores.keys())]
         x_arr = [[shape_arr[j].part(i).x for i in range(shape_arr[j].num_parts)] for j in list(norm_scores.keys())]
