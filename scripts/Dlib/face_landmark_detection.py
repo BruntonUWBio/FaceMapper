@@ -431,8 +431,8 @@ class Detector:
         #               norm_scores.items()}
         # Change scores to be a Gaussian distribution
         gauss = np.random.normal(0, 1 / self.distance_weight, len((norm_scores.keys())))
-        # Adding the scores to the Gaussian function, other option is to multiply them
-        norm_scores = {key: norm_scores[key] + gauss[index] for index, key in enumerate(norm_scores.keys())}
+        # Multiply the scores to the Gaussian function, other option is to add them
+        norm_scores = {key: norm_scores[key] * gauss[index] for index, key in enumerate(norm_scores.keys())}
 
         d_arr = [scores_dict[i][1] for i in list(norm_scores.keys())]
         x_arr = [[shape_arr[j].part(i).x for i in range(shape_arr[j].num_parts)] for j in list(norm_scores.keys())]
