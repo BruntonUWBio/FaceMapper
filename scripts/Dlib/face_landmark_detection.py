@@ -157,7 +157,8 @@ class Detector:
                 # Preload predictions for each frame
                 self.max_score_arr = {index: self.find_maxes(scores_dict) for index, scores_dict in
                                       self.scores_dict_arr.items() if scores_dict}
-                percent_found = len([i for i in self.max_score_arr.keys() if self.max_score_arr[i] is not None]) / len(
+                percent_found = len(
+                    [i for i in self.max_score_arr.keys() if self.max_score_arr[i] != (None, None)]) / len(
                     self.max_score_arr.keys())
                 for index, (max_score, max_d) in self.max_score_arr.items():
                     crop_im_arr = self.crop_im_arr_arr[index]
@@ -539,12 +540,12 @@ class Detector:
         try:
             max_score = max(list(scores_dict.keys()))
         except:
-            return None
+            return None, None
         if max_score > self.threshold:
             max_d = scores_dict[max_score][0]
             return max_score, max_d
         else:
-            return None
+            return None, None
 
     @staticmethod
     def write_to_im(new_name, img):
