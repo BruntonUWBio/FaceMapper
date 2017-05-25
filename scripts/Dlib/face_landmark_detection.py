@@ -132,9 +132,9 @@ class Detector:
             self.ref_dict = self.open_csv_file(os.path.join(faces_folder_path, 'cb46fd46_5_coordinates.csv'))
             self.ref_indexes = list(self.ref_dict.keys())
             self.optim_dict = defaultdict()
-        self.crop_im_arr_arr = [
+        self.crop_im_arr_arr = np.array([
             self.crop_predictor(img, f, scaled_height=img.shape[0], scaled_width=img.shape[1]) for img, f in
-            zip(self.make_img_arr(files), files) if img is not None and f is not None]
+            zip(self.make_img_arr(files), files) if img is not None and f is not None])
         self.scores_dict_arr = {index: self.show_face(f, crop_im_array[0], detected=False, show=False) for
                                 index, (f, crop_im_array) in
                                 enumerate(zip(files, self.crop_im_arr_arr)) if
@@ -143,7 +143,7 @@ class Detector:
         # for thresh in np.arange(-.8, .5, .2):
         for distance_weight in np.arange(1, 6, 1):
             for num_smoothing in np.arange(1, 15, 3):
-                std_devs = []
+                std_devs = np.array([])
                 # self.threshold = self.threshold
                 if not self.override:
                     self.distance_weight = distance_weight
@@ -157,6 +157,8 @@ class Detector:
                 # Preload predictions for each frame
                 self.max_score_arr = {index: self.find_maxes(scores_dict) for index, scores_dict in
                                       self.scores_dict_arr.items() if scores_dict}
+                percent_found = len([i for i in self.max_score_arr.keys() if self.max_score_arr[i] is not None]) / len(
+                    self.max_score_arr.keys())
                 for index, (max_score, max_d) in self.max_score_arr.items():
                     crop_im_arr = self.crop_im_arr_arr[index]
                     if crop_im_arr is not None:
@@ -215,7 +217,7 @@ class Detector:
                                             if shape:
                                                 shape_sq = self.find_sq_tuple(shape)
                                                 ref_sq = self.find_sq_tuple(ref_arr)
-                                                ref_score = np.std(np.abs(np.subtract(ref_sq, shape_sq)))
+                                                ref_score = np.average(np.abs(np.subtract(ref_sq, shape_sq)))
                                                 std_devs.append(ref_score)
 
                             else:
@@ -267,7 +269,8 @@ class Detector:
                 self.optim_dict[np.average(std_devs)] = out_str
                 print(out_str + " Score: " + str(np.average(std_devs)))
                 if not self.override:
-                    out_writer.writerow([str(np.average(std_devs)), str(self.optim_dict[np.average(std_devs)])])
+                    out_writer.writerow(
+                        [str(np.average(std_devs)), str(self.optim_dict[np.average(std_devs)]), percent_found])
                 else:
                     subprocess.Popen("ffmpeg -r 30 -f image2 -s 1920x1080 -pattern_type glob -i '{0}' "
                                      "-b 2000k {1}".format('*.png',
@@ -298,7 +301,7 @@ class Detector:
             back_half_name = ''.join(parts[1][parts[1].index('out') + 3: len(parts[1])])
             out_num = int(re.sub("[^0-9]", "", back_half_name))
         except ValueError:
-            return None, None
+            return None
         out_file = None
         if pid in list(crop_txt_files.keys()):
             out_file = crop_txt_files[pid]
@@ -349,9 +352,9 @@ class Detector:
                     range(-num_smoothing, num_smoothing + 1) if
                     (index + i) in big_arr.keys()}
         else:
-            return [big_arr[i] for i in
-                    range(-num_smoothing, num_smoothing) if
-                    (index + i) in range(0, len(big_arr))]
+            return np.array([big_arr[i] for i in
+                             range(-num_smoothing, num_smoothing) if
+                             (index + i) in range(0, len(big_arr))])
 
     def crop_predictor(self, img, name, scaled_width, scaled_height):
         print('Name: {0}'.format(name))
@@ -536,12 +539,12 @@ class Detector:
         try:
             max_score = max(list(scores_dict.keys()))
         except:
-            return None, None
+            return None
         if max_score > self.threshold:
             max_d = scores_dict[max_score][0]
             return max_score, max_d
         else:
-            return None, None
+            return None
 
     @staticmethod
     def write_to_im(new_name, img):
