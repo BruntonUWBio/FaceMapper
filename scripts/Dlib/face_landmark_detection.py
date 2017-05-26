@@ -74,7 +74,7 @@ class Detector:
         if '-th' in sys.argv and self.threshold is None:
             self.threshold = float(sys.argv[sys.argv.index('-th') + 1])
         if '-sm' in sys.argv and self.num_smoothing is None:
-            self.num_smoothing = float(sys.argv[sys.argv.index('-sm') + 1])
+            self.num_smoothing = int(sys.argv[sys.argv.index('-sm') + 1])
         if '-d' in sys.argv:
             self.distance_weight = float(sys.argv[sys.argv.index('-d') + 1])
         if '-i' in sys.argv:
