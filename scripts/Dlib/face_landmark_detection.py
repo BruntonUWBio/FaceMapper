@@ -273,10 +273,10 @@ class Detector:
                                 cv2.imwrite(new_name, img)
                         else:
                             self.show_face(f, img, detected)
-                ave = np.average(std_devs)
-                self.optim_dict[ave] = out_str
-                print(out_str + " Score: " + str(ave))
                 if not self.override:
+                    ave = np.average(std_devs)
+                    self.optim_dict[ave] = out_str
+                    print(out_str + " Score: " + str(ave))
                     out_writer.writerow(
                         [str(ave), str(self.optim_dict[ave]), self.threshold, percent_found])
                 elif self.override:
