@@ -144,7 +144,7 @@ class Detector:
         # for thresh in np.arange(-.8, .5, .2):
         for distance_weight in np.arange(1, 6, 1):
             for num_smoothing in np.arange(1, 15, 3):
-                std_devs = np.array([])
+                std_devs = []
                 # self.threshold = self.threshold
                 if not self.override:
                     self.distance_weight = distance_weight
@@ -220,7 +220,7 @@ class Detector:
                                                 shape_sq = self.find_sq_tuple(shape)
                                                 ref_sq = self.find_sq_tuple(ref_arr)
                                                 ref_score = np.average(np.abs(np.subtract(ref_sq, shape_sq)))
-                                                np.append(std_devs, ref_score)
+                                                std_devs.append(ref_score)
 
                             else:
                                 dir_name, base_name, split_name = self.splitname(f)
@@ -268,11 +268,12 @@ class Detector:
                                 cv2.imwrite(new_name, img)
                         else:
                             self.show_face(f, img, detected)
-                self.optim_dict[np.average(std_devs)] = out_str
-                print(out_str + " Score: " + str(np.average(std_devs)))
+                ave = np.average(std_devs)
+                self.optim_dict[ave] = out_str
+                print(out_str + " Score: " + str(ave))
                 if not self.override:
                     out_writer.writerow(
-                        [str(np.average(std_devs)), str(self.optim_dict[np.average(std_devs)]), percent_found])
+                        [str(ave), str(self.optim_dict[ave]), percent_found])
                 else:
                     subprocess.Popen("ffmpeg -r 30 -f image2 -s 1920x1080 -pattern_type glob -i '{0}' "
                                      "-b 2000k {1}".format('*.png',
