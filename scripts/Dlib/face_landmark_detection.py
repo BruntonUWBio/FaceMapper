@@ -59,6 +59,7 @@ import subprocess
 import cv2
 
 
+
 class Detector:
     def __init__(self):
         predictor_path = sys.argv[1]
@@ -338,6 +339,12 @@ class Detector:
         with open(path, 'rt') as csvfile:
             reader = csv.reader(csvfile)
             all_rows = [i for i in reader]
+            for row in all_rows:
+                for i in range(2, len(row), 3):
+                    if row[i] == "":
+                        row[i] = -1
+                    if row[i+1] == "":
+                        row[i+1] = -1
             file_dict = {index: [[float(row[i]), float(row[i + 1])] for i in range(2, len(row), 3)] for index, row in
                          enumerate(all_rows) if index >= 1}
             for index, row in enumerate(all_rows):
