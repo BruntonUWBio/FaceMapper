@@ -218,8 +218,8 @@ class Detector:
                                     if max_score_arr:
                                         shape = self.show_average_face(f, img, index, max_score_arr, shape_arr,
                                                                        show=self.show)
-                                        closest_ind = self.find_nearest(self.ref_indexes, index / 30)
                                         if not self.override:
+                                            closest_ind = self.find_nearest(self.ref_indexes, index / 30)
                                             ref_arr = [(arr[0], arr[1]) for arr in self.ref_dict[closest_ind]]
                                             if shape:
                                                 shape_sq = self.find_sq_tuple(shape)
@@ -278,7 +278,7 @@ class Detector:
                 print(out_str + " Score: " + str(ave))
                 if not self.override:
                     out_writer.writerow(
-                        [str(ave), str(self.optim_dict[ave]), percent_found])
+                        [str(ave), str(self.optim_dict[ave]), self.threshold, percent_found])
                 elif self.override:
                     self.send_to_ffmpeg(out_str)
                     break
