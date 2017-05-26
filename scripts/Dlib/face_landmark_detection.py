@@ -220,7 +220,7 @@ class Detector:
                                                 shape_sq = self.find_sq_tuple(shape)
                                                 ref_sq = self.find_sq_tuple(ref_arr)
                                                 ref_score = np.average(np.abs(np.subtract(ref_sq, shape_sq)))
-                                                std_devs.append(ref_score)
+                                                np.append(std_devs, ref_score)
 
                             else:
                                 dir_name, base_name, split_name = self.splitname(f)
