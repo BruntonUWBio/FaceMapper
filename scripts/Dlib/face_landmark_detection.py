@@ -74,9 +74,9 @@ class Detector:
         if '-th' in sys.argv and self.threshold is None:
             self.threshold = float(sys.argv[sys.argv.index('-th') + 1])
         if '-sm' in sys.argv and self.num_smoothing is None:
-            self.num_smoothing = int(sys.argv[sys.argv.index('-sm') + 1])
+            self.num_smoothing = float(sys.argv[sys.argv.index('-sm') + 1])
         if '-d' in sys.argv:
-            self.distance_weight = int(sys.argv[sys.argv.index('-d') + 1])
+            self.distance_weight = float(sys.argv[sys.argv.index('-d') + 1])
         if '-i' in sys.argv:
             self.input = sys.argv[sys.argv.index('-i') + 1]
 
@@ -127,15 +127,20 @@ class Detector:
         for ext in file_types:
             files.extend(glob.glob(join(faces_folder_path + '/**/', ext), recursive=True))
         files = sorted([f for f in files if '_detected' not in f])
-
+        out_writer = None
         if not self.override:
             out_writer = csv.writer(open(os.path.join(faces_folder_path, str(self.threshold) + 'out.csv'), 'w'))
             self.ref_dict = self.open_csv_file(os.path.join(faces_folder_path, 'cb46fd46_5_coordinates.csv'))
             self.ref_indexes = list(self.ref_dict.keys())
             self.optim_dict = defaultdict()
-        self.crop_im_arr_arr = np.array([
-            self.crop_predictor(img, f, scaled_height=img.shape[0], scaled_width=img.shape[1]) for img, f in
-            zip(self.make_img_arr(files), files) if img is not None and f is not None])
+        crop_im_file = os.path.join(faces_folder_path, 'crop_im_arr.npy')
+        if os.path.isfile(crop_im_file):
+            self.crop_im_arr_arr = np.load(crop_im_file)
+        else:
+            self.crop_im_arr_arr = np.array([
+                self.crop_predictor(img, f, scaled_height=img.shape[0], scaled_width=img.shape[1]) for img, f in
+                zip(self.make_img_arr(files), files) if img is not None and f is not None])
+            np.save(crop_im_file, self.crop_im_arr_arr)
         self.scores_dict_arr = {index: self.show_face(f, crop_im_array[0], detected=False, show=False) for
                                 index, (f, crop_im_array) in
                                 enumerate(zip(files, self.crop_im_arr_arr)) if
@@ -274,13 +279,20 @@ class Detector:
                 if not self.override:
                     out_writer.writerow(
                         [str(ave), str(self.optim_dict[ave]), percent_found])
-                else:
-                    subprocess.Popen("ffmpeg -r 30 -f image2 -s 1920x1080 -pattern_type glob -i '{0}' "
-                                     "-b 2000k {1}".format('*.png',
-                                                           out_str + '.mp4'),
-                                     cwd=detected_path,
-                                     shell=True).wait()
+                elif self.override:
+                    self.send_to_ffmpeg(out_str)
                     break
+                else:
+                    # TODO: Check if legit
+                    for image, (index, (score, d)) in zip(self.make_img_arr(files), self.max_score_arr.items()):
+                        if image is not None and score is not None and d is not None:
+                            dir_name, basename, split_name = self.splitname(image)
+                            new_name = self.new_file_name(os.path.join(dir_name, 'detected/'), split_name,
+                                                          '_detected')
+                            self.mark_im(misc.imresize(cv2.imread(files[index]), (960, 1280)), d, new_name,
+                                         self.shape_arr[index])
+                    self.send_to_ffmpeg(out_str)
+
                     # for score in sorted(self.optim_dict.keys()):
                     #   out_writer.writerow([str(score)] + self.optim_dict[score])
 
@@ -288,6 +300,14 @@ class Detector:
         if self.win:
             self.win.add_overlay(shape)
             self.win.add_overlay(d)
+
+    @staticmethod
+    def send_to_ffmpeg(out_str):
+        subprocess.Popen("ffmpeg -r 30 -f image2 -s 1920x1080 -pattern_type glob -i '{0}' "
+                         "-b 2000k {1}".format('*.png',
+                                               out_str + '.mp4'),
+                         cwd=detected_path,
+                         shell=True).wait()
 
     @staticmethod
     def splitname(name):
@@ -467,10 +487,7 @@ class Detector:
             img = cv2.cvtColor(img, cv2.COLOR_RGB2BGR)
             box = cv2.rectangle(img, (average_left, average_top), (average_right, average_bottom), color=(255, 0, 0))
             x_y_arr = zip(average_x_arr, average_y_arr)
-            cv_dot_arr = [cv2.circle(img, (dot[0], dot[1]), 3, (0, 0, 255)) for dot in x_y_arr]
-            cv2.imwrite(new_name, img[100:800, 300:800])
-            if show:
-                self.win.set_image(misc.imresize(misc.imread(new_name, mode='RGB'), (960, 1280)))
+            self.mark_im(img, None, new_name, None, x_y_arr, box, show)
             return list(zip(average_x_arr, average_y_arr))
 
     def show_best_face(self, name, scores_dict, img, show=True, max_score=None, max_d=None, save=False):
@@ -504,11 +521,20 @@ class Detector:
         img = misc.imresize(img, (960, 1280))
         dir_name, basename, split_name = self.splitname(name)
         new_name = self.new_file_name(os.path.join(dir_name, 'detected/'), split_name, '_detected')
-        box = cv2.rectangle(img, (d.left(), d.top()), (d.right(), d.bottom()), color=(255, 0, 0))
-        for i in range(shape.num_parts):
-            dot = shape.part(i)
-            cv_dot = cv2.circle(img, (dot.x, dot.y), 3, (0, 0, 255))
+        self.mark_im(img, d, new_name, shape)
+
+    def mark_im(self, img, d, new_name, shape=None, x_y_arr=None, box=None, show=False):
+        if box is None:
+            box = cv2.rectangle(img, (d.left(), d.top()), (d.right(), d.bottom()), color=(255, 0, 0))
+        if shape is not None:
+            for i in range(shape.num_parts):
+                dot = shape.part(i)
+                cv_dot = cv2.circle(img, (dot.x, dot.y), 3, (0, 0, 255))
+        elif x_y_arr is not None:
+            cv_dot_arr = [cv2.circle(img, (dot[0], dot[1]), 3, (0, 0, 255)) for dot in x_y_arr]
         cv2.imwrite(new_name, img[100:800, 300:800])  # Saves cropped image, change cropping dimensions if necessary
+        if show:
+            self.win.set_image(misc.imresize(misc.imread(new_name, mode='RGB'), (960, 1280)))
 
     @staticmethod
     def make_img_arr(files):
