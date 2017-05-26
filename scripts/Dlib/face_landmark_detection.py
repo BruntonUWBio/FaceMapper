@@ -156,9 +156,9 @@ class Detector:
                     self.num_smoothing = num_smoothing
                 out_str = os.path.join(vid_path, 'thresh_' + str(
                     self.threshold).replace('.', '') + 'dis_' + str(
-                    distance_weight).replace('.',
+                    self.distance_weight).replace('.',
                                              '') + 'num_smoothing' + str(
-                    num_smoothing).replace('.',
+                    self.num_smoothing).replace('.',
                                            ''))
                 # Preload predictions for each frame
                 self.max_score_arr = {index: self.find_maxes(scores_dict) for index, scores_dict in
@@ -295,6 +295,9 @@ class Detector:
 
                     # for score in sorted(self.optim_dict.keys()):
                     #   out_writer.writerow([str(score)] + self.optim_dict[score])
+            # TODO: Fix breaking, abstract loops out
+            if self.override:
+                break
 
     def overlay(self, shape, d):
         if self.win:
