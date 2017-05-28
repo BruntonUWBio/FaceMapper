@@ -296,7 +296,7 @@ class Detector:
                     # for score in sorted(self.optim_dict.keys()):
                     #   out_writer.writerow([str(score)] + self.optim_dict[score])
             # TODO: Fix breaking, abstract loops out
-            if self.override:
+            if not self.override:
                 break
 
     def overlay(self, shape, d):
