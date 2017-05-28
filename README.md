@@ -44,4 +44,5 @@ Contains some tweaks to Dlib's packaged face landmark detection script.
 - '-s' will save output to a separate folder called 'detected' if that folder exists (currently only functioning if crop is selected)
 - '-sm %n" will smooth output by taking best face from n nearest images
 - '-sh' will show output in a window
+- '-o' for internal testing
 

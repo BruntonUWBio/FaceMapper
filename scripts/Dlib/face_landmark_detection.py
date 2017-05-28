@@ -128,7 +128,7 @@ class Detector:
             files.extend(glob.glob(join(faces_folder_path + '/**/', ext), recursive=True))
         files = sorted([f for f in files if '_detected' not in f])
         out_writer = None
-        if not self.override:
+        if self.override:
             out_writer = csv.writer(open(os.path.join(faces_folder_path, str(self.threshold) + 'out.csv'), 'w'))
             self.ref_dict = self.open_csv_file(os.path.join(faces_folder_path, 'cb46fd46_5_coordinates.csv'))
             self.ref_indexes = list(self.ref_dict.keys())
@@ -151,7 +151,7 @@ class Detector:
             for num_smoothing in np.arange(1, 15, 3):
                 std_devs = []
                 # self.threshold = self.threshold
-                if not self.override:
+                if self.override:
                     self.distance_weight = distance_weight
                     self.num_smoothing = num_smoothing
                 out_str = os.path.join(vid_path, 'thresh_' + str(
@@ -218,7 +218,7 @@ class Detector:
                                     if max_score_arr:
                                         shape = self.show_average_face(f, img, index, max_score_arr, shape_arr,
                                                                        show=self.show)
-                                        if not self.override:
+                                        if self.override:
                                             closest_ind = self.find_nearest(self.ref_indexes, index / 30)
                                             ref_arr = [(arr[0], arr[1]) for arr in self.ref_dict[closest_ind]]
                                             if shape:
@@ -273,13 +273,13 @@ class Detector:
                                 cv2.imwrite(new_name, img)
                         else:
                             self.show_face(f, img, detected)
-                if not self.override:
+                if self.override:
                     ave = np.average(std_devs)
                     self.optim_dict[ave] = out_str
                     print(out_str + " Score: " + str(ave))
                     out_writer.writerow(
                         [str(ave), str(self.optim_dict[ave]), self.threshold, percent_found])
-                elif self.override:
+                elif not self.override:
                     self.send_to_ffmpeg(out_str)
                     break
                 else:
@@ -466,7 +466,7 @@ class Detector:
         # Change scores to be a Gaussian distribution
         gauss = np.random.normal(0, 1 / self.distance_weight, len((norm_scores.keys())))
         # Multiply the scores to the Gaussian function, other option is to add them
-        norm_scores = {key: norm_scores[key] + gauss[index] for index, key in enumerate(norm_scores.keys())}
+        norm_scores = {key: norm_scores[key] * gauss[index] for index, key in enumerate(norm_scores.keys())}
 
         d_arr = [scores_dict[i][1] for i in list(norm_scores.keys())]
         x_arr = [[shape_arr[j].part(i).x for i in range(shape_arr[j].num_parts)] for j in list(norm_scores.keys())]
@@ -491,7 +491,8 @@ class Detector:
             img = cv2.cvtColor(img, cv2.COLOR_RGB2BGR)
             box = cv2.rectangle(img, (average_left, average_top), (average_right, average_bottom), color=(255, 0, 0))
             x_y_arr = zip(average_x_arr, average_y_arr)
-            self.mark_im(img, None, new_name, None, x_y_arr, box, show)
+            if self.override:
+                self.mark_im(img, None, new_name, None, x_y_arr, box, show)
             return list(zip(average_x_arr, average_y_arr))
 
     def show_best_face(self, name, scores_dict, img, show=True, max_score=None, max_d=None, save=False):
