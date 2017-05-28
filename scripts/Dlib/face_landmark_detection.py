@@ -57,7 +57,7 @@ import numpy as np
 import re
 import subprocess
 import cv2
-
+import math
 
 
 class Detector:
@@ -157,9 +157,9 @@ class Detector:
                 out_str = os.path.join(vid_path, 'thresh_' + str(
                     self.threshold).replace('.', '') + 'dis_' + str(
                     self.distance_weight).replace('.',
-                                             '') + 'num_smoothing' + str(
+                                                  '') + 'num_smoothing' + str(
                     self.num_smoothing).replace('.',
-                                           ''))
+                                                ''))
                 # Preload predictions for each frame
                 self.max_score_arr = {index: self.find_maxes(scores_dict) for index, scores_dict in
                                       self.scores_dict_arr.items() if scores_dict}
@@ -222,9 +222,9 @@ class Detector:
                                             closest_ind = self.find_nearest(self.ref_indexes, index / 30)
                                             ref_arr = [(arr[0], arr[1]) for arr in self.ref_dict[closest_ind]]
                                             if shape:
-                                                shape_sq = self.find_sq_tuple(shape)
-                                                ref_sq = self.find_sq_tuple(ref_arr)
-                                                ref_score = np.average(np.abs(np.subtract(ref_sq, shape_sq)))
+                                                diff_arr = [self.find_distance(x1, x2, y1, y2) for (x1, y1), (x2, y2)
+                                                            in zip(ref_arr, shape)]
+                                                ref_score = np.average(diff_arr)
                                                 std_devs.append(ref_score)
 
                             else:
@@ -334,8 +334,8 @@ class Detector:
         return out_file, out_num
 
     @staticmethod
-    def find_sq_tuple(array):
-        return [np.sqrt(i[0] ** 2 + i[1] ** 2) for i in array]
+    def find_distance(x1, x2, y1, y2):
+        return math.sqrt((x2 - x1) ** 2 + (y2 - y1) ** 2)
 
     @staticmethod
     def find_nearest(array, value):
@@ -367,9 +367,10 @@ class Detector:
                 for i in range(2, len(row), 3):
                     if row[i] == "":
                         row[i] = -1
-                    if row[i+1] == "":
-                        row[i+1] = -1
-            file_dict = {index: [[float(row[i]), float(row[i + 1])] for i in range(2, len(row), 3)] for index, row in
+                    if row[i + 1] == "":
+                        row[i + 1] = -1
+            file_dict = {index: [[abs(float(row[i])), abs(float(row[i + 1]))] for i in range(2, len(row), 3)] for
+                         index, row in
                          enumerate(all_rows) if index >= 1}
             for index, row in enumerate(all_rows):
                 if index in list(file_dict.keys()):
