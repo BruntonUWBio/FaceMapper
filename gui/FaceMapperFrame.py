@@ -832,7 +832,7 @@ class FaceMapperFrame(wx.Frame):
         dl = self.draw_list()
         for index in sorted(dl.keys()):
             circle = dl[index]
-            face_part = self.faceParts[self.face_part_list[circle[5]]]
+            face_part = self.faceParts[self.face_part_list[int(circle[5])]]
             face_part[0] += 1
             circle = self.find_circle(dl[index][0:2])
             if circle is not None:
