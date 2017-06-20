@@ -78,7 +78,16 @@ class FaceMapperFrame(wx.Frame):
         self.faceBB = None
 
         self.filename = None
-        self.coords = defaultdict()
+
+        self.face_part_list = [
+            "Left Eye",
+            "Right Eye",
+            "Mouth",
+            "Jaw",
+            "Eyebrows",
+            "Nose"
+        ]
+
         self.faceParts = OrderedDict()
         self.faceLabels = []
 
@@ -90,13 +99,11 @@ class FaceMapperFrame(wx.Frame):
         self.emotion_dict = defaultdict()
 
         # ---------- Colors ----
+        # Set default colors
         self.color_db = wx.ColourDatabase()
-        self.color_db.AddColour("Left Eye", wx.TheColourDatabase.Find('Red'))
-        self.color_db.AddColour("Right Eye", wx.TheColourDatabase.Find('Orange'))
-        self.color_db.AddColour("Mouth", wx.TheColourDatabase.Find('Yellow'))
-        self.color_db.AddColour("Jaw", wx.TheColourDatabase.Find('Green'))
-        self.color_db.AddColour("Eyebrows", wx.TheColourDatabase.Find('Blue'))
-        self.color_db.AddColour("Nose", wx.TheColourDatabase.Find('Violet'))
+        default_colors = ['Red', 'Orange', 'Yellow', 'Green', 'Blue', 'Violet']
+        for index, facePart in enumerate(self.face_part_list):
+            self.color_db.AddColour(facePart, wx.TheColourDatabase.Find(default_colors[index]))
 
         self.face_part_values = OrderedDict()
         self.reset_face_part_values()
@@ -269,12 +276,9 @@ class FaceMapperFrame(wx.Frame):
     # Resets face part values to their defaults
     def reset_face_part_values(self):
         self.face_part_values.clear()
-        self.face_part_values["Left Eye"] = 6
-        self.face_part_values["Right Eye"] = 6
-        self.face_part_values["Mouth"] = 20
-        self.face_part_values["Jaw"] = 17
-        self.face_part_values["Eyebrows"] = 10
-        self.face_part_values["Nose"] = 9
+        default_vals = [6, 6, 20, 17, 10, 9]
+        for index, facePart in enumerate(self.face_part_list):
+            self.face_part_values[facePart] = default_vals[index]
 
     # Sets the face parts to their default values, with default colors
     def reset_face_parts(self):
@@ -302,13 +306,14 @@ class FaceMapperFrame(wx.Frame):
             for index in range(self.faceParts[facePart][1]):
                 self.faceNums.append(abbr + str(index + 1))
 
+    # Assign part numbers to each entry in coordinate matrix
     def assign_part_nums(self):
         for image in self.coordMatrix:
             part_num = 0
             counter = 0
             for index, circle in enumerate(image):
                 circle[5] = float(part_num)
-                val = self.dict_index(self.face_part_values, part_num)
+                val = self.face_part_values[self.face_part_list[part_num]]
                 if index - counter + 1 == val:
                     part_num += 1
                     counter += val
@@ -342,7 +347,6 @@ class FaceMapperFrame(wx.Frame):
             self.select_im(len(self.image_names) - 1)
 
     # Triggers on pressing "save and continue"
-
     def on_button_save(self, event):
         self.emotion_select()
         self.emotion_select(index=self.imageIndex + 1)
@@ -350,9 +354,6 @@ class FaceMapperFrame(wx.Frame):
         if len(self.image_names) > 1:
             if self.image_name:
                 self.prev_image_name = self.image_name
-                if self.n_points is not None and len(self.coords[self.image_name]) != self.n_points:
-                    print("ERROR: incorrect number of points.")
-
             self.image_name = self.image_names[i + 1]
             self.imageIndex = self.image_names.index(self.image_name)
             self.mirror_im(event, should_save=True, check_ssim_if_smart=True)
@@ -461,9 +462,7 @@ class FaceMapperFrame(wx.Frame):
         self.imageIndex = index
         self.image_name = self.image_names[self.imageIndex]
 
-
-        # Triggers on selecting a face part
-
+    # Triggers on selecting a face part
     def color_select(self, event):
         list_dlg = wx.SingleChoiceDialog(self, message="Choose an option", caption="list option",
                                          choices=['Reset Num', 'Choose Color'])
@@ -747,7 +746,7 @@ class FaceMapperFrame(wx.Frame):
             if not self.are_selecting_multiple:
                 self.clear_all_selections()
 
-    def mark_multi_guess(self):
+    def mark_multi_guess(self, event):
         for circle in self.selections:
             self.mark_guess(circle)
 
@@ -833,7 +832,7 @@ class FaceMapperFrame(wx.Frame):
         dl = self.draw_list()
         for index in sorted(dl.keys()):
             circle = dl[index]
-            face_part = self.dict_index(self.faceParts, int(circle[5]))
+            face_part = self.faceParts[self.face_part_list[circle[5]]]
             face_part[0] += 1
             circle = self.find_circle(dl[index][0:2])
             if circle is not None:
@@ -994,9 +993,9 @@ class FaceMapperFrame(wx.Frame):
     def distance(p1, p2):
         return math.sqrt(math.pow(p2[1] - p1[1], 2) + math.pow(p2[0] - p1[0], 2))
 
-    @staticmethod
-    def dict_index(diction, index):
-        return diction[list(diction.keys())[int(index)]]
+    # @staticmethod
+    # def dict_index(diction, index):
+    #     return diction[list(diction.keys())[int(index)]]
 
     def circ_is_null(self, circle):
         return np.array_equal(circle[0:2], self.nullArray)
