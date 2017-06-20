@@ -107,8 +107,7 @@ class FaceMapperFrame(wx.Frame):
 
         self.face_part_values = OrderedDict()
         self.reset_face_part_values()
-        self.reset_face_parts()
-        self.reset_face_labels()
+        self.reset_default_face_parts()
 
         self.faceNums = []
         self.reset_face_num()
@@ -188,6 +187,7 @@ class FaceMapperFrame(wx.Frame):
         self.counterList = wx.ListBox(self, wx.NewId(), style=wx.LC_REPORT | wx.SUNKEN_BORDER | wx.LB_SORT,
                                       name='Click on a category to change its color',
                                       choices=self.faceLabels)
+        self.make_face_labels()
         frame_dir_name = os.path.dirname(sys.argv[0])
         # self.sample_image_canvas = FloatCanvas.FloatCanvas(self.counterBox, Debug=0, BackgroundColor="Black")
         self.sampleImage = wx.Image(os.path.join(frame_dir_name, 'sample_face.png'), wx.BITMAP_TYPE_ANY)
@@ -281,24 +281,31 @@ class FaceMapperFrame(wx.Frame):
             self.face_part_values[facePart] = default_vals[index]
 
     # Sets the face parts to their default values, with default colors
-    def reset_face_parts(self):
+    def reset_default_face_parts(self):
         self.faceParts.clear()
-        for facePart in list(self.face_part_values.keys()):
+        for facePart in self.face_part_list:
             self.faceParts[facePart] = [0, int(self.face_part_values[facePart]), self.color_db.Find(facePart)]
 
+    # Zeroes out face parts
+    def zero_face_parts(self):
+        for facePart in self.face_part_list:
+            self.faceParts[facePart][0] = 0
+
     # Makes face labels based on the face parts
-    def reset_face_labels(self):
+    def make_face_labels(self):
+        self.counterList.Clear()
         self.faceLabels = []
         part_index = 1
-        for facePart in self.faceParts.keys():
+        for facePart in self.face_part_list:
             self.faceLabels.append("{0}. {1}: {2} out of {3}".format(part_index, facePart, self.faceParts[facePart][0],
                                                                      self.faceParts[facePart][1]))
             part_index += 1
+        self.counterList.Set(self.faceLabels)
 
     # Makes the numbers based on face parts
     def reset_face_num(self):
         self.faceNums.clear()
-        for facePart in self.faceParts.keys():
+        for facePart in self.face_part_list:
             split = facePart.split()
             abbr = ''
             for i in range(len(split)):
@@ -464,12 +471,14 @@ class FaceMapperFrame(wx.Frame):
 
     # Triggers on selecting a face part
     def color_select(self, event):
+        choices = ['Reset Num', 'Choose Color']
         list_dlg = wx.SingleChoiceDialog(self, message="Choose an option", caption="list option",
-                                         choices=['Reset Num', 'Choose Color'])
+                                         choices=choices)
         if list_dlg.ShowModal() == wx.ID_OK:
-            if list_dlg.GetSelection() == 'Choose Color':
+            selecString = choices[list_dlg.GetSelection()]
+            if selecString == 'Choose Color':
                 num = event.GetInt()
-                name = list(self.faceParts.keys())[num]
+                name = self.face_part_list[num]
                 self.colourData.SetColour(self.faceParts[name][2])
                 color_dlg = ccd.CubeColourDialog(self, self.colourData)
                 if color_dlg.ShowModal() == wx.ID_OK:
@@ -477,9 +486,9 @@ class FaceMapperFrame(wx.Frame):
                     self.colourData = color_dlg.GetColourData()
                     self.color_db.AddColour(name, self.colourData.GetColour())
                     self.display_image(zoom=False)
-            else:
+            elif selecString == 'Reset Num':
                 self.reset_face_part_values()
-                self.reset_face_parts()
+                self.reset_default_face_parts()
                 self.reset_face_num()
                 self.remove_occluded()
                 self.make_face_label_list()
@@ -500,7 +509,7 @@ class FaceMapperFrame(wx.Frame):
                 self.Canvas.AddScaledBitmap(bm, XY=(0, 0), Height=self.imHeight, Position='tl')
                 self.dotDiam = self.imHeight / 100
 
-        self.reset_face_parts()
+        self.zero_face_parts()
         dl = self.draw_list()
         dl_key_list = sorted(dl.keys())
         for index in dl_key_list:
@@ -838,9 +847,9 @@ class FaceMapperFrame(wx.Frame):
             if circle is not None:
                 self.set_color(circle, face_part[2].GetAsString())
                 circle.SetLineStyle('Solid')
-        self.counterList.Clear()
-        self.reset_face_labels()
-        self.counterList.Set(self.faceLabels)
+
+        self.make_face_labels()
+
 
     @staticmethod
     def set_color(circle, color):
@@ -914,11 +923,14 @@ class FaceMapperFrame(wx.Frame):
     def next_part(self, event):
         ind = self.find_first_free_pos() - 1
         part_index = self.curr_image_points()[ind, 5]
+        currPart = self.face_part_list[int(part_index)]
+        self.faceParts[currPart][1] = self.faceParts[currPart][0]
         next_circ = self.curr_image_points()[ind + 1]
         while next_circ[5] == part_index:
             next_circ[4] = 1.0
             ind += 1
             next_circ = self.curr_image_points()[ind + 1]
+        self.make_face_labels()
 
     def set_coords(self, circle, x_y, im_ind=None):
         if im_ind is None:
@@ -992,10 +1004,6 @@ class FaceMapperFrame(wx.Frame):
     @staticmethod
     def distance(p1, p2):
         return math.sqrt(math.pow(p2[1] - p1[1], 2) + math.pow(p2[0] - p1[0], 2))
-
-    # @staticmethod
-    # def dict_index(diction, index):
-    #     return diction[list(diction.keys())[int(index)]]
 
     def circ_is_null(self, circle):
         return np.array_equal(circle[0:2], self.nullArray)
