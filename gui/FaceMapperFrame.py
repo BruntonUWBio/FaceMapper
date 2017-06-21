@@ -337,11 +337,13 @@ class FaceMapperFrame(wx.Frame):
     # Sets coordinates based on CSV
     def open_csv_file(self, path):
         with open(path, 'rt') as csvfile:
+            file_names = []
             reader = csv.reader(csvfile)
             numRows = 0
             for index, row in enumerate(reader):
                 filename = row[0]
                 if filename in self.image_names:
+                    file_names.append(filename)
                     file_index = self.image_names.index(filename)
                     points = []
                     self.emotion_dict[filename] = row[1].split(',')
@@ -351,7 +353,7 @@ class FaceMapperFrame(wx.Frame):
                         self.coordMatrix[file_index, ind, 0:2] = point
                         self.coordMatrix[file_index, ind, 2] = 0
                 numRows += 1
-            self.select_im(len(self.image_names) - 1)
+            self.select_im(self.image_names.index(file_names.pop()))
 
     # Triggers on pressing "save and continue"
     def on_button_save(self, event):
