@@ -1,3 +1,8 @@
+"""
+.. module:: FaceMapperFrame
+    :synopsis: A GUI for annotating a series of faces from an image directory or video
+"""
+
 import colorsys
 import csv
 import glob
@@ -20,7 +25,21 @@ IMAGE_FORMATS = [".jpg", ".png", ".ppm", ".pgm", ".gif", ".tif", ".tiff", ".jpe"
 
 
 class FaceMapperFrame(wx.Frame):
+    """
+    Main annotation class
+    """
     def __init__(self, parent, id, name, image_dir, n_points=None, scale=1.0, is_video=False, csv_path=None):
+        """
+        Default constructor.
+        :param parent: Inherited from wx.Frame.
+        :param id: Inherited from wx.Frame.
+        :param name: Name of window.
+        :param image_dir: Parameter indicating either location of image sequence or video.
+        :param n_points: Maximum number of points for annotation.
+        :param scale: Unused.
+        :param is_video: If image_dir is the location of a video.
+        :param csv_path: Path to csv to store annotations
+        """
         wx.Frame.__init__(self, parent, id, name)
         self.smart_dlg = None
         if not csv_path:
@@ -334,8 +353,13 @@ class FaceMapperFrame(wx.Frame):
         self.Canvas.Bind(FloatCanvas.EVT_RIGHT_DOWN, self.on_right_click)
         self.Canvas.Bind(FloatCanvas.EVT_RIGHT_DCLICK, self.mark_multi_guess)
 
-    # Sets coordinates based on CSV
     def open_csv_file(self, path):
+        """
+        Sets coordinates based on csv.
+
+        :param path: Path to csv.
+        :return: None
+        """
         with open(path, 'rt') as csvfile:
             file_names = []
             reader = csv.reader(csvfile)
@@ -459,7 +483,7 @@ class FaceMapperFrame(wx.Frame):
             pass
 
     def select_im(self, index):
-        self.updateIndex(index)
+        self.update_index(index)
         for i in range(len(self.image_names)):
             if i == index:
                 for circle in self.coordMatrix[i,]:
@@ -467,7 +491,7 @@ class FaceMapperFrame(wx.Frame):
                         circle[2] = 0
         self.mirror_im(event=None, should_save=False, check_ssim_if_smart=False)
 
-    def updateIndex(self, index):
+    def update_index(self, index):
         self.imageIndex = index
         self.image_name = self.image_names[self.imageIndex]
 
@@ -477,8 +501,8 @@ class FaceMapperFrame(wx.Frame):
         list_dlg = wx.SingleChoiceDialog(self, message="Choose an option", caption="list option",
                                          choices=choices)
         if list_dlg.ShowModal() == wx.ID_OK:
-            selecString = choices[list_dlg.GetSelection()]
-            if selecString == 'Choose Color':
+            select_string = choices[list_dlg.GetSelection()]
+            if select_string == 'Choose Color':
                 num = event.GetInt()
                 name = self.face_part_list[num]
                 self.colourData.SetColour(self.faceParts[name][2])
@@ -488,7 +512,7 @@ class FaceMapperFrame(wx.Frame):
                     self.colourData = color_dlg.GetColourData()
                     self.color_db.AddColour(name, self.colourData.GetColour())
                     self.display_image(zoom=False)
-            elif selecString == 'Reset Num':
+            elif select_string == 'Reset Num':
                 self.reset_face_part_values()
                 self.reset_default_face_parts()
                 self.reset_face_num()
@@ -548,8 +572,8 @@ class FaceMapperFrame(wx.Frame):
         if len(self.Canvas._ForeDrawList) >= 1:
             self.faceBB = Utilities.BBox.fromPoints([circ.XY for circ in self.Canvas._ForeDrawList])
         if zoom:
-            if len(self.Canvas._ForeDrawList) >= 1 and self.distance(p1=self.faceBB[0],
-                                                                     p2=self.faceBB[1]) >= self.imHeight / 10:
+            if len(self.Canvas._ForeDrawList) >= 1 and distance(p1=self.faceBB[0],
+                                                                p2=self.faceBB[1]) >= self.imHeight / 10:
                 self.Canvas.ZoomToBB(self.faceBB)
             else:
                 self.Canvas.ZoomToBB()
@@ -1003,10 +1027,6 @@ class FaceMapperFrame(wx.Frame):
             ind = self.imageIndex
         return self.coordMatrix[ind,]
 
-    @staticmethod
-    def distance(p1, p2):
-        return math.sqrt(math.pow(p2[1] - p1[1], 2) + math.pow(p2[0] - p1[0], 2))
-
     def circ_is_null(self, circle):
         return np.array_equal(circle[0:2], self.nullArray)
 
@@ -1028,6 +1048,18 @@ class FaceMapperFrame(wx.Frame):
             if not self.circ_is_null(circle):
                 last = index
         return last + 1
+
+
+def distance(p1, p2):
+    """
+    Returns the mathematical distance between two point arrays containing their x coordinate in their first index
+    and their y coordinate in their second index
+
+    :param p1: First point
+    :param p2: Second point
+    :return: Distance between p1 and p2
+    """
+    return math.sqrt(math.pow(p2[1] - p1[1], 2) + math.pow(p2[0] - p1[0], 2))
 
 
 if __name__ == '__main__':
