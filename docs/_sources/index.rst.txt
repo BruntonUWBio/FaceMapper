@@ -4,9 +4,9 @@ Welcome to FaceMapper's documentation!
 Contents:
 
 .. toctree::
-   :maxdepth: 2
+    :maxdepth: 2
 
-   FaceMapperFrame
+    FaceMapperFrame
 
 Indices and tables
 ==================

@@ -2,4 +2,4 @@ FaceMapperFrame
 ***************
 
 .. automodule:: gui.FaceMapperFrame
-:members:
+    :members:
