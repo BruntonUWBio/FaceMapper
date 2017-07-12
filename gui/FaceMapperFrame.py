@@ -42,6 +42,7 @@ class FaceMapperFrame(wx.Frame):
         """
         wx.Frame.__init__(self, parent, id, name)
         self.smart_dlg = None
+        self.fps_frac = '30'
         if not csv_path:
             if not is_video:
                 smart_or_dumb_dlg = wx.SingleChoiceDialog(None, message='Please select a frames method',
@@ -65,14 +66,14 @@ class FaceMapperFrame(wx.Frame):
                             frames_dlg = wx.TextEntryDialog(None, message='Please select frames per second', value='5')
                             if frames_dlg.ShowModal() == wx.ID_OK:
                                 subprocess.Popen(
-                                    'ffmpeg -i "{0}" -vf fps=1/{1} "{2}"'.format(image_dir, frames_dlg.GetValue(),
+                                    'ffmpeg -i "{0}" -vf fps={1} "{2}"'.format(image_dir, frames_dlg.GetValue(),
                                                                                  self.image_dir + '/' + os.path.basename(
                                                                                      image_dir)
                                                                                  + '_out%03d.png'), shell=True).wait()
                         else:
                             self.smart_dlg = True
                             subprocess.Popen(
-                                'ffmpeg -i "{0}" -vf fps=1/{1} "{2}"'.format(image_dir, str(1), self.image_dir + '/'
+                                'ffmpeg -i "{0}" -vf fps={1} "{2}"'.format(image_dir, self.fps_frac, self.image_dir + '/'
                                                                              + os.path.basename(
                                     image_dir) + '_out%03d.png'), shell=True).wait()
             # ---------------- Basic Data -------------------
