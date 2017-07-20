@@ -28,6 +28,7 @@ class FaceMapperFrame(wx.Frame):
     """
     Main annotation class
     """
+
     def __init__(self, parent, id, name, image_dir, n_points=None, scale=1.0, is_video=False, csv_path=None):
         """
         Default constructor.
@@ -67,15 +68,17 @@ class FaceMapperFrame(wx.Frame):
                             if frames_dlg.ShowModal() == wx.ID_OK:
                                 subprocess.Popen(
                                     'ffmpeg -i "{0}" -vf fps={1} "{2}"'.format(image_dir, frames_dlg.GetValue(),
-                                                                                 self.image_dir + '/' + os.path.basename(
-                                                                                     image_dir)
-                                                                                 + '_out%03d.png'), shell=True).wait()
+                                                                               self.image_dir + '/' + os.path.basename(
+                                                                                   image_dir)
+                                                                               + '_out%03d.png'), shell=True).wait()
                         else:
                             self.smart_dlg = True
                             subprocess.Popen(
-                                'ffmpeg -i "{0}" -vf fps={1} "{2}"'.format(image_dir, self.fps_frac, self.image_dir + '/'
-                                                                             + os.path.basename(
-                                    image_dir) + '_out%03d.png'), shell=True).wait()
+                                'ffmpeg -i "{0}" -vf fps={1} "{2}"'.format(image_dir, self.fps_frac,
+                                                                           self.image_dir + '/'
+                                                                           + os.path.basename(
+                                                                               image_dir) + '_out%03d.png'),
+                                shell=True).wait()
             # ---------------- Basic Data -------------------
             else:
                 self.image_dir = image_dir
@@ -435,10 +438,16 @@ class FaceMapperFrame(wx.Frame):
 
     def re_mirror(self, event):
         if self.imageIndex >= 1:
-            self.recur_mirror(self.imageIndex)
+            index = self.imageIndex
+            while(True):
+                if not self.no_dots(index):
+                    self.iter_mirror(index)
+                    index += 1
+                else:
+                    break
             self.Canvas.Draw()
 
-    def recur_mirror(self, index):
+    def iter_mirror(self, index):
         if not self.no_dots(index):
             dl = self.draw_list(index)
             for ind in dl.keys():
@@ -447,7 +456,6 @@ class FaceMapperFrame(wx.Frame):
                 if not self.circ_is_null(prev_circ):
                     self.set_coords(self.find_circle(self.curr_image_points()[ind][0:2]), prev_circ[0:2],
                                     im_ind=index)
-            self.recur_mirror(index + 1)
 
     # Save coordinates to a csv file
     def save(self, path):
@@ -876,7 +884,6 @@ class FaceMapperFrame(wx.Frame):
                 circle.SetLineStyle('Solid')
 
         self.make_face_labels()
-
 
     @staticmethod
     def set_color(circle, color):
