@@ -70,14 +70,14 @@ class FaceMapperFrame(wx.Frame):
                                     'ffmpeg -i "{0}" -vf fps={1} "{2}"'.format(image_dir, frames_dlg.GetValue(),
                                                                                self.image_dir + '/' + os.path.basename(
                                                                                    image_dir)
-                                                                               + '_out%03d.png'), shell=True).wait()
+                                                                               + '_out%04d.png'), shell=True).wait()
                         else:
                             self.smart_dlg = True
                             subprocess.Popen(
                                 'ffmpeg -i "{0}" -vf fps={1} "{2}"'.format(image_dir, self.fps_frac,
                                                                            self.image_dir + '/'
                                                                            + os.path.basename(
-                                                                               image_dir) + '_out%03d.png'),
+                                                                               image_dir) + '_out%04d.png'),
                                 shell=True).wait()
             # ---------------- Basic Data -------------------
             else:
