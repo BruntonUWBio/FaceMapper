@@ -418,24 +418,28 @@ class FaceMapperFrame(wx.Frame):
             if self.prev_image_name:
                 cv_prev_image = self.image_reads[self.prev_image_name]
                 self.prev_image_name = None
-            cv_curr_image = self.image_reads[self.image_name]
 
-            if self.faceBB is not None:
-                world_face_bb = Utilities.BBox.fromPoints([abs(self.faceBB[0]), abs(self.faceBB[1])])
-                min_x = int(world_face_bb[0][0])
-                min_y = int(world_face_bb[0][1])
-                max_x = int(world_face_bb[1][0])
-                max_y = int(world_face_bb[1][1])
-                cropped_prev_cv_image = cv_prev_image[min_y:max_y, min_x:max_x]
-                cropped_curr_cv_image = cv_curr_image[min_y:max_y, min_x:max_x]
-                ssim_index = ssim(cropped_prev_cv_image, cropped_curr_cv_image, multichannel=True)
-                if ssim_index > self.ssim_threshold:
-                    self.on_button_save(event=None)
-                else:
-                    self.prev_image_name = self.image_name
-                    self.display_image(zoom=True)
-                    if should_save:
-                        self.on_save(event)
+                cv_curr_image = self.image_reads[self.image_name]
+
+                if self.faceBB is not None:
+                    world_face_bb = Utilities.BBox.fromPoints([abs(self.faceBB[0]), abs(self.faceBB[1])])
+                    min_x = int(world_face_bb[0][0])
+                    min_y = int(world_face_bb[0][1])
+                    max_x = int(world_face_bb[1][0])
+                    max_y = int(world_face_bb[1][1])
+                    cropped_prev_cv_image = cv_prev_image[min_y:max_y, min_x:max_x]
+                    cropped_curr_cv_image = cv_curr_image[min_y:max_y, min_x:max_x]
+                    ssim_index = ssim(cropped_prev_cv_image, cropped_curr_cv_image, multichannel=True)
+                    if ssim_index > self.ssim_threshold:
+                        self.on_button_save(event=None)
+                    else:
+                        self.prev_image_name = self.image_name
+                        self.display_image(zoom=True)
+                        if should_save:
+                            self.on_save(event)
+            else:
+                self.prev_image_name = self.image_name
+                self.on_button_save(event=None)
         else:
             self.display_image(zoom=True)
             if should_save:
