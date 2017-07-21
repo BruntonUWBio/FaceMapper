@@ -97,6 +97,7 @@ class FaceMapperFrame(wx.Frame):
             self.image_names.extend([os.path.basename(x) for x in glob.glob(self.image_dir + '/*{0}'.format(files))])
 
         self.image_names.sort()
+        self.image_reads = {image : cv2.imread(os.path.join(image_dir, image)) for image in self.image_names}
 
         self.faceBB = None
 
@@ -393,12 +394,12 @@ class FaceMapperFrame(wx.Frame):
                 self.prev_image_name = self.image_name
             self.image_name = self.image_names[i + 1]
             self.imageIndex = self.image_names.index(self.image_name)
-            self.mirror_im(event, should_save=True, check_ssim_if_smart=True)
+            self.mirror_im(event, should_save=True, check_ssim_if_smart=True, show=False)
         else:
             print('You\'re Done!')
 
     # Mirrors coordinates from previous image, if previous image exists
-    def mirror_im(self, event, should_save, check_ssim_if_smart):
+    def mirror_im(self, event, should_save, check_ssim_if_smart, show=True):
         cv_prev_image = None
         if self.imageIndex >= 1 and self.circ_is_null(self.coordMatrix[self.imageIndex, 0,]):
             self.coordMatrix[self.imageIndex,] = self.coordMatrix[self.imageIndex - 1,]
@@ -411,13 +412,13 @@ class FaceMapperFrame(wx.Frame):
         self.imageIndex = self.image_names.index(self.image_name)
         self.list.SetSelection(self.imageIndex)
         self.remove_labels()
-        self.display_image(zoom=True)
+        ssim_index = 2 * self.ssim_threshold
 
         if self.smart_dlg and check_ssim_if_smart:
             if self.prev_image_name:
-                cv_prev_image = cv2.imread(os.path.join(self.image_dir, self.prev_image_name))
+                cv_prev_image = self.image_reads[self.prev_image_name]
                 self.prev_image_name = None
-            cv_curr_image = cv2.imread(filename)
+            cv_curr_image = self.image_reads[self.image_name]
 
             if self.faceBB is not None:
                 world_face_bb = Utilities.BBox.fromPoints([abs(self.faceBB[0]), abs(self.faceBB[1])])
@@ -432,9 +433,13 @@ class FaceMapperFrame(wx.Frame):
                     self.on_button_save(event=None)
                 else:
                     self.prev_image_name = self.image_name
-
-        if should_save:
-            self.on_save(event)
+                    self.display_image(zoom=True)
+                    if should_save:
+                        self.on_save(event)
+        else:
+            self.display_image(zoom=True)
+            if should_save:
+                self.on_save(event)
 
     def re_mirror(self, event):
         if self.imageIndex >= 1:
