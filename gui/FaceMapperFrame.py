@@ -97,7 +97,13 @@ class FaceMapperFrame(wx.Frame):
             self.image_names.extend([os.path.basename(x) for x in glob.glob(self.image_dir + '/*{0}'.format(files))])
 
         self.image_names.sort()
+
+        imgDlg = wx.MessageDialog(None, message="Please wait, images processing...", style=wx.CENTER)
+        imgDlg.ShowModal()
+
         self.image_reads = {image : cv2.imread(os.path.join(image_dir, image)) for image in self.image_names}
+
+        imgDlg.Destroy()
 
         self.faceBB = None
 
@@ -438,7 +444,6 @@ class FaceMapperFrame(wx.Frame):
                         if should_save:
                             self.on_save(event)
             else:
-                self.prev_image_name = self.image_name
                 self.on_button_save(event=None)
         else:
             self.display_image(zoom=True)
