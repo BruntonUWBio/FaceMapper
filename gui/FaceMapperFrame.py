@@ -85,7 +85,7 @@ class FaceMapperFrame(wx.Frame):
         else:
             self.image_dir = os.path.dirname(csv_path)
         self.n_points = n_points
-        self.ssim_threshold = .85
+        self.ssim_threshold = .90
         self.image_names = []
         self.imageIndex = 0
         self.current_image = None
@@ -392,17 +392,18 @@ class FaceMapperFrame(wx.Frame):
 
     # Triggers on pressing "save and continue"
     def on_button_save(self, event):
-        self.emotion_select()
-        self.emotion_select(index=self.imageIndex + 1)
-        i = self.image_names.index(self.image_name)
-        if len(self.image_names) > 1:
-            if self.image_name:
-                self.prev_image_name = self.image_name
-            self.image_name = self.image_names[i + 1]
-            self.imageIndex = self.image_names.index(self.image_name)
-            self.mirror_im(event, should_save=True, check_ssim_if_smart=True, show=False)
-        else:
-            print('You\'re Done!')
+        while self.mirror_im(event, should_save=True, check_ssim_if_smart=True, show=False):
+            self.emotion_select()
+            self.emotion_select(index=self.imageIndex + 1)
+            i = self.image_names.index(self.image_name)
+            if len(self.image_names) > 1:
+                if self.image_name:
+                    self.prev_image_name = self.image_name
+                self.image_name = self.image_names[i + 1]
+                self.imageIndex = self.image_names.index(self.image_name)
+                #self.mirror_im(event, should_save=True, check_ssim_if_smart=True, show=False)
+            else:
+                print('You\'re Done!')
 
     # Mirrors coordinates from previous image, if previous image exists
     def mirror_im(self, event, should_save, check_ssim_if_smart, show=True):
@@ -418,7 +419,6 @@ class FaceMapperFrame(wx.Frame):
         self.imageIndex = self.image_names.index(self.image_name)
         self.list.SetSelection(self.imageIndex)
         self.remove_labels()
-        ssim_index = 2 * self.ssim_threshold
 
         if self.smart_dlg and check_ssim_if_smart:
             if self.prev_image_name:
@@ -437,23 +437,20 @@ class FaceMapperFrame(wx.Frame):
                     cropped_curr_cv_image = cv_curr_image[min_y:max_y, min_x:max_x]
                     ssim_index = ssim(cropped_prev_cv_image, cropped_curr_cv_image, multichannel=True)
                     if ssim_index > self.ssim_threshold:
-                        self.on_button_save(event=None)
+                        return True
                     else:
                         self.prev_image_name = self.image_name
                         self.display_image(zoom=True)
-                        if should_save:
-                            self.on_save(event)
+                        return False
             else:
-                self.on_button_save(event=None)
+                return True
         else:
             self.display_image(zoom=True)
-            if should_save:
-                self.on_save(event)
 
     def re_mirror(self, event):
         if self.imageIndex >= 1:
             index = self.imageIndex
-            while(True):
+            while True:
                 if not self.no_dots(index):
                     self.iter_mirror(index)
                     index += 1
@@ -596,7 +593,7 @@ class FaceMapperFrame(wx.Frame):
             self.faceBB = Utilities.BBox.fromPoints([circ.XY for circ in self.Canvas._ForeDrawList])
         if zoom:
             if len(self.Canvas._ForeDrawList) >= 1 and distance(p1=self.faceBB[0],
-                                                                p2=self.faceBB[1]) >= self.imHeight / 10:
+                                                                p2=self.faceBB[1]) >= self.imHeight / 5:
                 self.Canvas.ZoomToBB(self.faceBB)
             else:
                 self.Canvas.ZoomToBB()
