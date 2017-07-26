@@ -15,6 +15,84 @@ from wx.lib.floatcanvas import NavCanvas, FloatCanvas, Utilities
 
 IMAGE_FORMATS = [".jpg", ".png", ".ppm", ".pgm", ".gif", ".tif", ".tiff", ".jpe"]
 
+
+def change_hsv(im, split_name, dir_name, file):
+    hsv = cv2.cvtColor(im, cv2.COLOR_BGR2HSV).astype("float64")
+    h, s, v = cv2.split(hsv)
+    change = random.randint(-25, 25)
+    v += np.float64(change)
+    v = np.clip(v, 0, 255)
+    final_hsv = cv2.merge((h, s, v))
+    im = cv2.cvtColor(final_hsv.astype("uint8"), cv2.COLOR_HSV2BGR)
+    new_file = make_new_im(im, split_name, dir_name, '_bchanged', file)
+    return new_file
+
+
+def shift_all_boxes(file, x_change, y_change, rows, cols):
+    for box in list(file):
+        old_left = int(box.get('left'))
+        old_top = int(box.get('top'))
+        new_left, new_top = shift(old_left, old_top, x_change, y_change, rows, cols)
+        box.set('left', str(new_left))
+        box.set('top', str(new_top))
+        for part in list(box):
+            old_x = int(part.get('x'))
+            old_y = int(part.get('y'))
+            new_x, new_y = shift(old_x, old_y, x_change, y_change, rows, cols)
+            part.set('x', str(new_x))
+            part.set('y', str(new_y))
+
+
+def shift_im(im, split_name, dir_name, file):
+    rows, cols = im.shape[0:2]
+    x_change = random.randint(-50, 50)
+    y_change = random.randint(-70, 70)
+    M = np.float32([[1, 0, x_change], [0, 1, y_change]])
+    im = cv2.warpAffine(im, M, (cols, rows))
+    new_file = copy.deepcopy(file)
+    shift_all_boxes(new_file, x_change, y_change, rows, cols)
+    new_file = make_new_im(im, split_name, dir_name, '_shifted', new_file)
+    return new_file
+
+
+def pts_to_xml(pts_path):
+    pt_file = open(pts_path, 'r+')
+    s = pt_file.read()
+    split_lines = s.splitlines()[3:]
+    split_lines = split_lines[0:len(split_lines) - 1]
+    if '}' in split_lines:
+        split_lines.remove('}')
+    if 'version: 1' in split_lines:
+        split_lines.remove('version: 1')
+    if 'n_points: 68' in split_lines:
+        split_lines.remove('n_points: 68')
+    if '{' in split_lines:
+        split_lines.remove('{')
+    split_path = os.path.dirname(pts_path)
+    image_map = defaultdict()
+    just_file, ext = os.path.basename(os.path.splitext(pts_path)[0]), os.path.splitext(pts_path)[1]
+    filename = None
+    for img_ext in IMAGE_FORMATS:
+        test_file_name = os.path.join(split_path, just_file + img_ext)
+        if os.path.isfile(test_file_name):
+            filename = test_file_name
+    if filename:
+        image_map[filename] = []
+        for i in range(len(split_lines)):
+            pts = split_lines[i].split(' ')
+            x = str(abs(int(float(pts[0]))))
+            y = str(abs(int(float(pts[1]))))
+            image_map[filename].append(x)
+            image_map[filename].append(y)
+        image_map[filename].insert(0, bb(image_map[filename]))
+        return make_image_list(image_map)
+    else:
+        print(split_path)
+        print(just_file)
+        print(os.path.join(split_path, just_file + ext) + 'has no associated file')
+        return None
+
+
 class XmlTransformer:  # CSV File in Disguise
     def __init__(self):
         transform_image = False
@@ -89,7 +167,7 @@ class XmlTransformer:  # CSV File in Disguise
             for image in self.csv_to_xml(file):
                 self.images.append(image)
         for file in glob.iglob(path + '/**/*.pts', recursive=True):
-            for image in self.pts_to_xml(file):
+            for image in pts_to_xml(file):
                 self.images.append(image)
 
     def crop_images(self):
@@ -139,7 +217,7 @@ class XmlTransformer:  # CSV File in Disguise
                             if im is not None:
                                 print(os.path.join(dir_name, new_name))
                                 file.set('file', os.path.join(dir_name, new_name))
-                                self.shift_all_boxes(file, -1 * x_min, -1 * y_min, im.shape[0], im.shape[1])
+                                shift_all_boxes(file, -1 * x_min, -1 * y_min, im.shape[0], im.shape[1])
                     else:
                         print('{0} out of range'.format(i))
 
@@ -166,65 +244,8 @@ class XmlTransformer:  # CSV File in Disguise
                 if im is None:
                     print(name + ' Does not exist')
                 else:
-                    image.append(self.change_hsv(im, split_name, dir_name, file))
-                    image.append(self.shift_im(im, split_name, dir_name, file))
-
-    def change_hsv(self, im, split_name, dir_name, file):
-        hsv = cv2.cvtColor(im, cv2.COLOR_BGR2HSV).astype("float64")
-        h, s, v = cv2.split(hsv)
-        change = random.randint(-25, 25)
-        v += np.float64(change)
-        v = np.clip(v, 0, 255)
-        final_hsv = cv2.merge((h, s, v))
-        im = cv2.cvtColor(final_hsv.astype("uint8"), cv2.COLOR_HSV2BGR)
-        new_file = self.make_new_im(im, split_name, dir_name, '_bchanged', file)
-        return new_file
-
-    def shift_im(self, im, split_name, dir_name, file):
-        rows, cols = im.shape[0:2]
-        x_change = random.randint(-50, 50)
-        y_change = random.randint(-70, 70)
-        M = np.float32([[1, 0, x_change], [0, 1, y_change]])
-        im = cv2.warpAffine(im, M, (cols, rows))
-        new_file = copy.deepcopy(file)
-        self.shift_all_boxes(new_file, x_change, y_change, rows, cols)
-        new_file = self.make_new_im(im, split_name, dir_name, '_shifted', new_file)
-        return new_file
-
-    def shift_all_boxes(self, file, x_change, y_change, rows, cols):
-        for box in list(file):
-            old_left = int(box.get('left'))
-            old_top = int(box.get('top'))
-            new_left, new_top = self.shift(old_left, old_top, x_change, y_change, rows, cols)
-            box.set('left', str(new_left))
-            box.set('top', str(new_top))
-            for part in list(box):
-                old_x = int(part.get('x'))
-                old_y = int(part.get('y'))
-                new_x, new_y = self.shift(old_x, old_y, x_change, y_change, rows, cols)
-                part.set('x', str(new_x))
-                part.set('y', str(new_y))
-
-    @staticmethod
-    def shift(x, y, x_change, y_change, rows, cols):
-        new_x = np.clip([x + x_change], 0, rows)[0]
-        new_y = np.clip([y + y_change], 0, cols)[0]
-        return [new_x, new_y]
-
-    @staticmethod
-    def make_new_im(im, split_name, dir_name, addition, file):
-        new_name = split_name[0] + addition + split_name[1]
-        cv2.imwrite(os.path.join(dir_name, new_name), im)
-        new_file = copy.deepcopy(file)
-        new_file.set('file', os.path.join(dir_name, new_name))
-        return new_file
-
-    @staticmethod
-    def bb(points):
-        try:
-            return Utilities.BBox.fromPoints([(points[i], points[i + 1]) for i in range(0, len(points), 2)])
-        except ValueError:
-            pass
+                    image.append(change_hsv(im, split_name, dir_name, file))
+                    image.append(shift_im(im, split_name, dir_name, file))
 
     def csv_to_xml(self, csv_path):
         image_map = defaultdict()
@@ -262,107 +283,8 @@ class XmlTransformer:  # CSV File in Disguise
                         for ind in image_map[filename].keys():
                             all_pts.append(int(image_map[filename][ind][0]))
                             all_pts.append(int(image_map[filename][ind][1]))
-                        image_map[filename]['bb'] = self.bb(all_pts)
-        return self.make_image_list(image_map, is_csv=True)
-
-    def pts_to_xml(self, pts_path):
-        pt_file = open(pts_path, 'r+')
-        s = pt_file.read()
-        split_lines = s.splitlines()[3:]
-        split_lines = split_lines[0:len(split_lines) - 1]
-        if '}' in split_lines:
-            split_lines.remove('}')
-        if 'version: 1' in split_lines:
-            split_lines.remove('version: 1')
-        if 'n_points: 68' in split_lines:
-            split_lines.remove('n_points: 68')
-        if '{' in split_lines:
-            split_lines.remove('{')
-        split_path = os.path.dirname(pts_path)
-        image_map = defaultdict()
-        just_file, ext = os.path.basename(os.path.splitext(pts_path)[0]), os.path.splitext(pts_path)[1]
-        filename = None
-        for img_ext in IMAGE_FORMATS:
-            test_file_name = os.path.join(split_path, just_file + img_ext)
-            if os.path.isfile(test_file_name):
-                filename = test_file_name
-        if filename:
-            image_map[filename] = []
-            for i in range(len(split_lines)):
-                pts = split_lines[i].split(' ')
-                x = str(abs(int(float(pts[0]))))
-                y = str(abs(int(float(pts[1]))))
-                image_map[filename].append(x)
-                image_map[filename].append(y)
-            image_map[filename].insert(0, self.bb(image_map[filename]))
-            return self.make_image_list(image_map)
-        else:
-            print(split_path)
-            print(just_file)
-            print(os.path.join(split_path, just_file + ext) + 'has no associated file')
-            return None
-
-
-    @staticmethod
-    def make_image_list(image_map, is_csv=False):
-        image_list = defaultdict()
-        images = ET.Element('images')
-        if not is_csv:
-            for index, file in enumerate(image_map.keys()):
-                e = ET.SubElement(images, 'image', {'file': '{0}'.format(file)})
-                image_list[e] = {}
-                coord_list = image_map[file]
-                bb = coord_list[0].astype(int)
-                bbox = ET.SubElement(e,
-                                     'box',
-                                     {
-                                         'top': '{0}'.format(bb[0][1]),
-                                         'left': '{0}'.format(bb[0][0]),
-                                         'width': '{0}'.format(bb[1][0] - bb[0][0]),
-                                         'height': '{0}'.format(bb[1][1] - bb[0][1])
-                                     })
-                image_list[e][bbox] = []
-                j = 0
-                for i in range(1, len(coord_list), 2):
-                    if j < 10:
-                        name = str('0' + str(j))
-                    else:
-                        name = str(j)
-                    p = ET.SubElement(bbox, 'part',
-                                      {'name': '{0}'.format(name),
-                                       'x': '{0}'.format(coord_list[i]),
-                                       'y': '{0}'.format(coord_list[i + 1])})
-                    image_list[e][bbox].append(p)
-                    j += 1
-            return images
-        else:
-            for index, file in enumerate(image_map.keys()):
-                e = ET.SubElement(images, 'image', {'file': '{0}'.format(file)})
-                image_list[e] = {}
-                coord_dict = image_map[file]
-                if coord_dict['bb'] is not None:
-                    bb = coord_dict['bb'].astype(int)
-                    bbox = ET.SubElement(e,
-                                         'box',
-                                         {
-                                             'top': '{0}'.format(bb[0][1]),
-                                             'left': '{0}'.format(bb[0][0]),
-                                             'width': '{0}'.format(bb[1][0] - bb[0][0]),
-                                             'height': '{0}'.format(bb[1][1] - bb[0][1])
-                                         })
-                    image_list[e][bbox] = []
-                    for ind in coord_dict.keys():
-                        if ind != 'bb':
-                            if int(ind) < 10:
-                                name = str('0' + str(ind))
-                            else:
-                                name = str(ind)
-                            p = ET.SubElement(bbox, 'part',
-                                              {'name': '{0}'.format(name),
-                                               'x': '{0}'.format(coord_dict[ind][0]),
-                                               'y': '{0}'.format(coord_dict[ind][1])})
-                            image_list[e][bbox].append(p)
-            return images
+                        image_map[filename]['bb'] = bb(all_pts)
+        return make_image_list(image_map, is_csv=True)
 
     def indent(self, elem, level=0):
         i = "\n" + level * "  "
@@ -416,6 +338,88 @@ class XmlTransformer:  # CSV File in Disguise
         self.landmark_map[65] = 'M19'
         self.landmark_map[66] = 'M18'
         self.landmark_map[67] = 'M17'
+
+
+def make_image_list(image_map, is_csv=False):
+    image_list = defaultdict()
+    images = ET.Element('images')
+    if not is_csv:
+        for index, file in enumerate(image_map.keys()):
+            e = ET.SubElement(images, 'image', {'file': '{0}'.format(file)})
+            image_list[e] = {}
+            coord_list = image_map[file]
+            bb = coord_list[0].astype(int)
+            bbox = ET.SubElement(e,
+                                 'box',
+                                 {
+                                     'top': '{0}'.format(bb[0][1]),
+                                     'left': '{0}'.format(bb[0][0]),
+                                     'width': '{0}'.format(bb[1][0] - bb[0][0]),
+                                     'height': '{0}'.format(bb[1][1] - bb[0][1])
+                                 })
+            image_list[e][bbox] = []
+            j = 0
+            for i in range(1, len(coord_list), 2):
+                if j < 10:
+                    name = str('0' + str(j))
+                else:
+                    name = str(j)
+                p = ET.SubElement(bbox, 'part',
+                                  {'name': '{0}'.format(name),
+                                   'x': '{0}'.format(coord_list[i]),
+                                   'y': '{0}'.format(coord_list[i + 1])})
+                image_list[e][bbox].append(p)
+                j += 1
+        return images
+    else:
+        for index, file in enumerate(image_map.keys()):
+            e = ET.SubElement(images, 'image', {'file': '{0}'.format(file)})
+            image_list[e] = {}
+            coord_dict = image_map[file]
+            if coord_dict['bb'] is not None:
+                bb = coord_dict['bb'].astype(int)
+                bbox = ET.SubElement(e,
+                                     'box',
+                                     {
+                                         'top': '{0}'.format(bb[0][1]),
+                                         'left': '{0}'.format(bb[0][0]),
+                                         'width': '{0}'.format(bb[1][0] - bb[0][0]),
+                                         'height': '{0}'.format(bb[1][1] - bb[0][1])
+                                     })
+                image_list[e][bbox] = []
+                for ind in coord_dict.keys():
+                    if ind != 'bb':
+                        if int(ind) < 10:
+                            name = str('0' + str(ind))
+                        else:
+                            name = str(ind)
+                        p = ET.SubElement(bbox, 'part',
+                                          {'name': '{0}'.format(name),
+                                           'x': '{0}'.format(coord_dict[ind][0]),
+                                           'y': '{0}'.format(coord_dict[ind][1])})
+                        image_list[e][bbox].append(p)
+        return images
+
+
+def bb(points):
+    try:
+        return Utilities.BBox.fromPoints([(points[i], points[i + 1]) for i in range(0, len(points), 2)])
+    except ValueError:
+        pass
+
+
+def shift(x, y, x_change, y_change, rows, cols):
+    new_x = np.clip([x + x_change], 0, rows)[0]
+    new_y = np.clip([y + y_change], 0, cols)[0]
+    return [new_x, new_y]
+
+
+def make_new_im(im, split_name, dir_name, addition, file):
+    new_name = split_name[0] + addition + split_name[1]
+    cv2.imwrite(os.path.join(dir_name, new_name), im)
+    new_file = copy.deepcopy(file)
+    new_file.set('file', os.path.join(dir_name, new_name))
+    return new_file
 
 
 if __name__ == '__main__':

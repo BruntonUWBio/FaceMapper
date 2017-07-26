@@ -99,9 +99,9 @@ class FaceMapperFrame(wx.Frame):
         self.image_names.sort()
 
         imgDlg = wx.MessageDialog(None, message="Please wait, images processing...", style=wx.CENTER)
-        imgDlg.ShowModal()
+        imgDlg.Show(show=True)
 
-        self.image_reads = {image : cv2.imread(os.path.join(image_dir, image)) for image in self.image_names}
+        self.image_reads = {image : cv2.imread(os.path.join(self.image_dir, image)) for image in self.image_names}
 
         imgDlg.Destroy()
 
@@ -1106,8 +1106,7 @@ if __name__ == '__main__':
 
                 print("Image Dir", image_dir)
 
-                frame = FaceMapperFrame(None, wx.ID_ANY, "FaceMapper", image_dir,
-                                        n_points=None, scale=scale, is_video=False)
+                frame = FaceMapperFrame(None, wx.ID_ANY, "FaceMapper", image_dir, scale=scale, is_video=False)
             else:
                 file_dialog = wx.FileDialog(None, message="Please select a video file.")
                 err = file_dialog.ShowModal()
@@ -1118,9 +1117,8 @@ if __name__ == '__main__':
                     print("Error getting video file")
                 print("Video", video)
 
-                frame = FaceMapperFrame(None, wx.ID_ANY, "FaceMapper", video, n_points=None, scale=scale, is_video=True)
+                frame = FaceMapperFrame(None, wx.ID_ANY, "FaceMapper", video, scale=scale, is_video=True)
     else:
-        frame = FaceMapperFrame(None, wx.ID_ANY, "FaceMapper", None, n_points=None, scale=scale, is_video=True,
-                                csv_path=csv_file_path)
+        frame = FaceMapperFrame(None, wx.ID_ANY, "FaceMapper", None, scale=scale, is_video=True, csv_path=csv_file_path)
     frame.Show(True)
     app.MainLoop()
