@@ -85,7 +85,7 @@ class FaceMapperFrame(wx.Frame):
         else:
             self.image_dir = os.path.dirname(csv_path)
         self.n_points = n_points
-        self.ssim_threshold = .90
+        self.ssim_threshold = .9
         self.image_names = []
         self.imageIndex = 0
         self.current_image = None
@@ -235,7 +235,8 @@ class FaceMapperFrame(wx.Frame):
             'Afraid',
             'Disgusted',
             'Neutral',
-            'Surprised'
+            'Surprised',
+            'None (Face not Visible)'
         ]
 
         self.emotionList = wx.ListBox(self, wx.NewId(), style=wx.LB_MULTIPLE, choices=self.emotion_choices)
@@ -396,7 +397,7 @@ class FaceMapperFrame(wx.Frame):
             self.emotion_select()
             self.emotion_select(index=self.imageIndex + 1)
             i = self.image_names.index(self.image_name)
-            if len(self.image_names) > 1:
+            if len(self.image_names) > i + 1:
                 if self.image_name:
                     self.prev_image_name = self.image_name
                 self.image_name = self.image_names[i + 1]
@@ -404,6 +405,7 @@ class FaceMapperFrame(wx.Frame):
                 #self.mirror_im(event, should_save=True, check_ssim_if_smart=True, show=False)
             else:
                 print('You\'re Done!')
+                break
 
     # Mirrors coordinates from previous image, if previous image exists
     def mirror_im(self, event, should_save, check_ssim_if_smart, show=True):
@@ -447,7 +449,7 @@ class FaceMapperFrame(wx.Frame):
         else:
             self.display_image(zoom=True)
 
-    def re_mirror(self, event):
+    def re_mirror(self, event=None):
         if self.imageIndex >= 1:
             index = self.imageIndex
             while True:
@@ -459,14 +461,13 @@ class FaceMapperFrame(wx.Frame):
             self.Canvas.Draw()
 
     def iter_mirror(self, index):
-        if not self.no_dots(index):
-            dl = self.draw_list(index)
-            for ind in dl.keys():
-                # circ_ind = self.find_circle_coord_ind(dl[ind][0:2], ind=index)
-                prev_circ = self.coordMatrix[index - 1, ind]
-                if not self.circ_is_null(prev_circ):
-                    self.set_coords(self.find_circle(self.curr_image_points()[ind][0:2]), prev_circ[0:2],
-                                    im_ind=index)
+        dl = self.draw_list(index)
+        for ind in dl.keys():
+            # circ_ind = self.find_circle_coord_ind(dl[ind][0:2], ind=index)
+            prev_circ = self.coordMatrix[index - 1, ind]
+            if not self.circ_is_null(prev_circ):
+                self.set_coords(self.find_circle(self.curr_image_points()[ind][0:2]), prev_circ[0:2],
+                                im_ind=index)
 
     # Save coordinates to a csv file
     def save(self, path):
@@ -936,6 +937,7 @@ class FaceMapperFrame(wx.Frame):
         if result == wx.ID_YES:
             print("Saving...")
             self.on_save(event)
+            print('Done!')
         else:
             print("Discarding changes...")
 
@@ -1110,12 +1112,12 @@ if __name__ == '__main__':
             else:
                 file_dialog = wx.FileDialog(None, message="Please select a video file.")
                 err = file_dialog.ShowModal()
-                video = '.'
+                video = ''
                 if err == wx.ID_OK:
                     video = file_dialog.GetPath()
                 else:
                     print("Error getting video file")
-                print("Video", video)
+                print("Video: " + video)
 
                 frame = FaceMapperFrame(None, wx.ID_ANY, "FaceMapper", video, scale=scale, is_video=True)
     else:
