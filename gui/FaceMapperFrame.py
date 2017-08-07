@@ -236,7 +236,7 @@ class FaceMapperFrame(wx.Frame):
             'Disgusted',
             'Neutral',
             'Surprised',
-            'None (Face not Visible)'
+            'None (Face not Visible/ Emotion Unclear)'
         ]
 
         self.emotionList = wx.ListBox(self, wx.NewId(), style=wx.LB_MULTIPLE, choices=self.emotion_choices)
@@ -943,6 +943,9 @@ class FaceMapperFrame(wx.Frame):
 
         # Pass this on to the default handler.
         event.Skip()
+        for image in self.image_names:
+            os.remove(image)
+        sys.exit(0)
 
     # Changes an array to standard null array
     def remove_array(self, l, arr):
