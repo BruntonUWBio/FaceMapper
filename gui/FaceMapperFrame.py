@@ -433,7 +433,7 @@ class FaceMapperFrame(wx.Frame):
                 print('You\'re Done!')
                 break
             #self.display_image(zoom=False)
-            time.sleep(.5)
+            time.sleep(.25)
             wx.Yield()
 
     def pause(self, event):
@@ -479,7 +479,7 @@ class FaceMapperFrame(wx.Frame):
             else:
                 return True
         else:
-            self.display_image(zoom=False)
+            self.display_image(zoom=False, re_show=True)
 
     def re_mirror(self, event=None):
         if self.imageIndex >= 1:
@@ -578,16 +578,17 @@ class FaceMapperFrame(wx.Frame):
                 point[4] = 0
 
     # Displays image
-    def display_image(self, zoom):
+    def display_image(self, zoom, re_show=False):
         #if zoom:
-        self.Canvas.InitAll()
-        if self.current_image:
-            im = self.current_image.Copy()
-            self.imHeight = im.GetHeight()
-            self.imWidth = im.GetWidth()
-            bm = im.ConvertToBitmap()
-            self.Canvas.AddScaledBitmap(bm, XY=( - self.imWidth/2, self.imHeight/2), Height=self.imHeight, Position='tl')
-            self.dotDiam = self.imHeight / 100
+        if re_show:
+            self.Canvas.InitAll()
+            if self.current_image:
+                im = self.current_image.Copy()
+                self.imHeight = im.GetHeight()
+                self.imWidth = im.GetWidth()
+                bm = im.ConvertToBitmap()
+                self.Canvas.AddScaledBitmap(bm, XY=( - self.imWidth/2, self.imHeight/2), Height=self.imHeight, Position='tl')
+                self.dotDiam = self.imHeight / 100
 
         self.zero_face_parts()
         dl = self.draw_list()
