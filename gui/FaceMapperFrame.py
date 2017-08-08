@@ -433,7 +433,6 @@ class FaceMapperFrame(wx.Frame):
                 print('You\'re Done!')
                 break
             #self.display_image(zoom=False)
-            time.sleep(.15)
             wx.Yield()
 
     def pause(self, event):
@@ -595,6 +594,7 @@ class FaceMapperFrame(wx.Frame):
         dl_key_list = sorted(dl.keys())
         for index in dl_key_list:
             coord_circle = dl[index]
+            part = list(self.faceParts.keys())[int(coord_circle[5])]
             if coord_circle[2] == 0:
                 if index >= 1:
                     self.dotDiam = dl[dl_key_list[dl_key_list.index(index) - 1]][3]
@@ -606,6 +606,7 @@ class FaceMapperFrame(wx.Frame):
                     circle = self.find_circle(coord_circle[0:2])
                     circle.XY = coord_circle[0:2]
                     circle.SetDiameter(diam)
+                    self.set_color(circle, part)
                 else:
                     circ = FloatCanvas.Circle(XY=coord_circle[0:2], Diameter=diam, LineWidth=.7, LineColor='Red',
                                               FillColor='Red',
@@ -618,6 +619,7 @@ class FaceMapperFrame(wx.Frame):
                     circ.Bind(FloatCanvas.EVT_FC_ENTER_OBJECT, self.circle_hover)
                     circ.Bind(FloatCanvas.EVT_FC_LEAVE_OBJECT, self.selection_reset)
                     circ.Bind(FloatCanvas.EVT_FC_LEFT_DCLICK, self.mark_guess)
+                    self.set_color(circ, part)
 
                 coord_circle[2] = 1
 
@@ -742,7 +744,7 @@ class FaceMapperFrame(wx.Frame):
                 delta = -.05
             new_color = colorsys.hsv_to_rgb(hsv_color[0] + delta, hsv_color[1], hsv_color[2])
             self.color_db.AddColour(part, wx.Colour(new_color[0], new_color[1], new_color[2], alpha=wx.ALPHA_OPAQUE))
-            self.faceParts[part][]
+            self.faceParts[part][2] = wx.Colour(new_color[0], new_color[1], new_color[2], alpha=wx.ALPHA_OPAQUE)
             self.display_image(zoom=False)
 
     def on_key_press(self, event):
