@@ -433,7 +433,7 @@ class FaceMapperFrame(wx.Frame):
                 print('You\'re Done!')
                 break
             #self.display_image(zoom=False)
-            time.sleep(.25)
+            time.sleep(.15)
             wx.Yield()
 
     def pause(self, event):
@@ -742,6 +742,7 @@ class FaceMapperFrame(wx.Frame):
                 delta = -.05
             new_color = colorsys.hsv_to_rgb(hsv_color[0] + delta, hsv_color[1], hsv_color[2])
             self.color_db.AddColour(part, wx.Colour(new_color[0], new_color[1], new_color[2], alpha=wx.ALPHA_OPAQUE))
+            self.faceParts[part][]
             self.display_image(zoom=False)
 
     def on_key_press(self, event):
