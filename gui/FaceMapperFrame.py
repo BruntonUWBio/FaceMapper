@@ -18,6 +18,7 @@ import numpy as np
 import time
 import wx
 import wx.lib.agw.cubecolourdialog as ccd
+from wx.lib import colourdb
 from skimage.measure import compare_ssim as ssim
 from wx.lib.floatcanvas import NavCanvas, FloatCanvas, Utilities
 
@@ -133,6 +134,7 @@ class FaceMapperFrame(wx.Frame):
 
         # ---------- Colors ----
         # Set default colors
+        colourdb.updateColourDB()
         self.color_db = wx.ColourDatabase()
         default_colors = ['Red', 'Orange', 'Yellow', 'Green', 'Blue', 'Violet']
         for index, facePart in enumerate(self.face_part_list):
@@ -578,7 +580,6 @@ class FaceMapperFrame(wx.Frame):
 
     # Displays image
     def display_image(self, zoom, re_show=False):
-        #if zoom:
         if re_show:
             self.Canvas.InitAll()
             if self.current_image:
@@ -586,7 +587,7 @@ class FaceMapperFrame(wx.Frame):
                 self.imHeight = im.GetHeight()
                 self.imWidth = im.GetWidth()
                 bm = im.ConvertToBitmap()
-                self.Canvas.AddScaledBitmap(bm, XY=( - self.imWidth/2, self.imHeight/2), Height=self.imHeight, Position='tl')
+                self.Canvas.AddScaledBitmap(bm, XY=(0, 0), Height=self.Canvas.GetSize().GetHeight(), Position='cc')
                 self.dotDiam = self.imHeight / 100
 
         self.zero_face_parts()
@@ -606,7 +607,7 @@ class FaceMapperFrame(wx.Frame):
                     circle = self.find_circle(coord_circle[0:2])
                     circle.XY = coord_circle[0:2]
                     circle.SetDiameter(diam)
-                    self.set_color(circle, part)
+                    self.set_color(circle, self.faceParts[part][2].GetAsString())
                 else:
                     circ = FloatCanvas.Circle(XY=coord_circle[0:2], Diameter=diam, LineWidth=.7, LineColor='Red',
                                               FillColor='Red',
@@ -619,7 +620,7 @@ class FaceMapperFrame(wx.Frame):
                     circ.Bind(FloatCanvas.EVT_FC_ENTER_OBJECT, self.circle_hover)
                     circ.Bind(FloatCanvas.EVT_FC_LEAVE_OBJECT, self.selection_reset)
                     circ.Bind(FloatCanvas.EVT_FC_LEFT_DCLICK, self.mark_guess)
-                    self.set_color(circ, part)
+                    self.set_color(circ, self.faceParts[part][2].GetAsString())
 
                 coord_circle[2] = 1
 
@@ -632,8 +633,6 @@ class FaceMapperFrame(wx.Frame):
             if len(self.Canvas._ForeDrawList) >= 1 and distance(p1=self.faceBB[0],
                                                                 p2=self.faceBB[1]) >= self.imHeight / 5:
                 self.Canvas.ZoomToBB(self.faceBB)
-            else:
-                self.Canvas.ZoomToBB()
 
     # Triggers on left mouse click
     def on_left_down(self, event):
@@ -735,6 +734,7 @@ class FaceMapperFrame(wx.Frame):
     def on_cmd_scroll(self, event):
         if self.pressedKeys[wx.WXK_CONTROL]:
             coord_circ = self.curr_image_points()[self.find_circle_coord_ind(self.scrollingCircle.XY)]
+            colorList = wx.lib.colourdb.getColourList()
             part = list(self.faceParts.keys())[int(coord_circ[5])]
             curr_color = self.faceParts[part][2]
             hsv_color = colorsys.rgb_to_hsv(curr_color.Red(), curr_color.Green(), curr_color.Blue())
