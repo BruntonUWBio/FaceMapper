@@ -92,6 +92,7 @@ class FaceMapperFrame(wx.Frame):
         self.image_name = None
         self.prev_image_name = None
         self.compare_image_name = None
+        self.paused = None
         self.scale = scale
         for files in IMAGE_FORMATS:
             self.image_names.extend([os.path.basename(x) for x in glob.glob(self.image_dir + '/*{0}'.format(files))])
@@ -101,7 +102,8 @@ class FaceMapperFrame(wx.Frame):
         imgDlg = wx.MessageDialog(None, message="Please wait, images processing...", style=wx.CENTER)
         imgDlg.Show(show=True)
 
-        self.image_reads = {image : cv2.imread(os.path.join(self.image_dir, image)) for image in self.image_names}
+        if self.smart_dlg:
+            self.image_reads = {image : cv2.imread(os.path.join(self.image_dir, image)) for image in self.image_names}
 
         imgDlg.Destroy()
 
@@ -244,16 +246,20 @@ class FaceMapperFrame(wx.Frame):
         self.saveButton = wx.Button(self, wx.NewId(), label='Save and Continue')
         self.labelButton = wx.Button(self, wx.NewId(), label='Show Labels')
         self.re_mirror_button = wx.Button(self, wx.NewId(), label='Re-Mirror')
+        self.play_button = wx.Button(self, wx.NewId(), label='Play')
+        self.pause_button = wx.Button(self, wx.NewId(), label='Pause')
+        self.leftBox.Add(self.emotionList, 1, wx.EXPAND)
         self.rightBox.Add(self.counterList, 1, wx.EXPAND)
         self.rightBox.Add(self.sample_image_bitmap, 4, wx.EXPAND)
         self.rightBox.Add(self.nextButton, .5, wx.EXPAND)
         self.rightBox.Add(self.re_mirror_button, .5, wx.EXPAND)
         self.rightBox.Add(self.labelButton, .5, wx.EXPAND)
-        self.leftBox.Add(self.emotionList, 1, wx.EXPAND)
         self.rightBox.Add(self.saveButton, .5, wx.EXPAND)
+        self.rightBox.Add(self.play_button, .5, wx.EXPAND)
+        self.rightBox.Add(self.pause_button, .5, wx.EXPAND)
 
         # ----------------- Window Layout  -------------
-        self.mainBox = wx.BoxSizer(wx.HORIZONTAL)
+        self.mainBox = wx.BoxSizer()
         self.mainBox.Add(self.leftBox, 1, wx.EXPAND)
         self.mainBox.Add(n_c, 3, wx.EXPAND)
         self.mainBox.Add(self.rightBox, 1, wx.EXPAND)
@@ -276,6 +282,8 @@ class FaceMapperFrame(wx.Frame):
         self.Bind(wx.EVT_BUTTON, self.show_labels, id=self.labelButton.GetId())
         self.Bind(wx.EVT_BUTTON, self.next_part, id=self.nextButton.GetId())
         self.Bind(wx.EVT_BUTTON, self.re_mirror, id=self.re_mirror_button.GetId())
+        self.Bind(wx.EVT_BUTTON, self.play, id=self.play_button.GetId())
+        self.Bind(wx.EVT_BUTTON, self.pause, id=self.pause_button.GetId())
         self.bind_all_mouse_events()
         self.Bind(wx.EVT_MENU, self.on_open, id=wx.ID_OPEN)
         self.Bind(wx.EVT_MENU, self.on_save, id=wx.ID_SAVE)
@@ -393,7 +401,7 @@ class FaceMapperFrame(wx.Frame):
 
     # Triggers on pressing "save and continue"
     def on_button_save(self, event):
-        while self.mirror_im(event, should_save=True, check_ssim_if_smart=True, show=False):
+        while self.mirror_im(event, should_save=True, check_ssim_if_smart=True):
             self.emotion_select()
             self.emotion_select(index=self.imageIndex + 1)
             i = self.image_names.index(self.image_name)
@@ -402,10 +410,32 @@ class FaceMapperFrame(wx.Frame):
                     self.prev_image_name = self.image_name
                 self.image_name = self.image_names[i + 1]
                 self.imageIndex = self.image_names.index(self.image_name)
-                #self.mirror_im(event, should_save=True, check_ssim_if_smart=True, show=False)
+
             else:
                 print('You\'re Done!')
                 break
+
+    def play(self, event):
+        self.paused = True
+        index = 0
+        while self.paused:
+            self.emotion_select()
+            self.emotion_select(index=self.imageIndex + 1)
+            i = self.image_names.index(self.image_name)
+            if len(self.image_names) > i + 1:
+                if self.image_name:
+                    self.prev_image_name = self.image_name
+                self.image_name = self.image_names[i + 1]
+                self.imageIndex = self.image_names.index(self.image_name)
+                self.mirror_im(event, should_save=True, check_ssim_if_smart=False)
+            else:
+                print('You\'re Done!')
+                break
+            #self.display_image(zoom=False)
+            wx.YieldIfNeeded()
+
+    def pause(self, event):
+        self.paused = False
 
     # Mirrors coordinates from previous image, if previous image exists
     def mirror_im(self, event, should_save, check_ssim_if_smart, show=True):
@@ -447,7 +477,7 @@ class FaceMapperFrame(wx.Frame):
             else:
                 return True
         else:
-            self.display_image(zoom=True)
+            self.display_image(zoom=False)
 
     def re_mirror(self, event=None):
         if self.imageIndex >= 1:
@@ -479,14 +509,14 @@ class FaceMapperFrame(wx.Frame):
             first_row.append('guess')
         writer.writerow(first_row)
         for index, image in enumerate(self.image_names):
-            if not self.circ_array_is_null(self.curr_image_points(index)):
-                row = [image, ', '.join([self.emotion_choices[i] for i in self.emotion_dict[image]])]
-                for point in self.curr_image_points(index):
-                    if not self.circ_is_null(point) or self.is_occluded(point):
-                        row.append(point[0])
-                        row.append(point[1])
-                        row.append(point[self.coord_keys.index('guess')])
-                writer.writerow(row)
+            #if not self.circ_array_is_null(self.curr_image_points(index)):
+            row = [image, ', '.join([self.emotion_choices[i] for i in self.emotion_dict[image]])]
+            for point in self.curr_image_points(index):
+                if not self.circ_is_null(point) or self.is_occluded(point):
+                    row.append(point[0])
+                    row.append(point[1])
+                    row.append(point[self.coord_keys.index('guess')])
+            writer.writerow(row)
 
     # Triggers on event selection
     def on_select(self, event):
@@ -547,14 +577,15 @@ class FaceMapperFrame(wx.Frame):
 
     # Displays image
     def display_image(self, zoom):
-        if zoom:
-            self.Canvas.InitAll()
-            if self.current_image:
-                im = self.current_image.Copy()
-                # self.imHeight = im.GetHeight()
-                bm = im.ConvertToBitmap()
-                self.Canvas.AddScaledBitmap(bm, XY=(0, 0), Height=self.imHeight, Position='tl')
-                self.dotDiam = self.imHeight / 100
+        #if zoom:
+        self.Canvas.InitAll()
+        if self.current_image:
+            im = self.current_image.Copy()
+            self.imHeight = im.GetHeight()
+            self.imWidth = im.GetWidth()
+            bm = im.ConvertToBitmap()
+            self.Canvas.AddScaledBitmap(bm, XY=( - self.imWidth/2, self.imHeight/2), Height=self.imHeight, Position='tl')
+            self.dotDiam = self.imHeight / 100
 
         self.zero_face_parts()
         dl = self.draw_list()
@@ -937,14 +968,16 @@ class FaceMapperFrame(wx.Frame):
         if result == wx.ID_YES:
             print("Saving...")
             self.on_save(event)
-            print('Done!')
         else:
             print("Discarding changes...")
 
         # Pass this on to the default handler.
         event.Skip()
         for image in self.image_names:
-            os.remove(image)
+             print('Removing ' + image)
+             if os.path.exists(os.path.join(self.image_dir, image)):
+                 os.remove(os.path.join(self.image_dir, image))
+        print('Done!')
         sys.exit(0)
 
     # Changes an array to standard null array
