@@ -15,6 +15,7 @@ import subprocess
 
 import cv2
 import numpy as np
+import time
 import wx
 import wx.lib.agw.cubecolourdialog as ccd
 from skimage.measure import compare_ssim as ssim
@@ -432,7 +433,8 @@ class FaceMapperFrame(wx.Frame):
                 print('You\'re Done!')
                 break
             #self.display_image(zoom=False)
-            wx.YieldIfNeeded()
+            time.sleep(.5)
+            wx.Yield()
 
     def pause(self, event):
         self.paused = False
