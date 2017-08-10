@@ -1,36 +1,26 @@
-"""
-.. module:: FaceMapperFrame
-    :synopsis: A GUI for annotating a series of faces from an image directory or video
-"""
-
 import colorsys
 import csv
 import glob
-import math
+from collections import OrderedDict, defaultdict
+
+import cv2
 import os
-import os.path
-from collections import defaultdict, OrderedDict
+import numpy as np
+import math
+from skimage.measure import compare_ssim as ssim
 import sys
 import subprocess
 
-import cv2
-import numpy as np
-import time
+from internal.FaceMapperModel import FaceMapperModel
 import wx
 import wx.lib.agw.cubecolourdialog as ccd
 from wx.lib import colourdb
-from skimage.measure import compare_ssim as ssim
-from wx.lib.floatcanvas import NavCanvas, FloatCanvas, Utilities
+from wx.lib.floatcanvas import NavCanvas, Utilities, FloatCanvas
 
-# Defines the list of image formats
 IMAGE_FORMATS = [".jpg", ".png", ".ppm", ".pgm", ".gif", ".tif", ".tiff", ".jpe"]
 
 
 class FaceMapperFrame(wx.Frame):
-    """
-    Main annotation class
-    """
-
     def __init__(self, parent, id, name, image_dir, n_points=None, scale=1.0, is_video=False, csv_path=None):
         """
         Default constructor.
@@ -105,7 +95,7 @@ class FaceMapperFrame(wx.Frame):
         imgDlg.Show(show=True)
 
         if self.smart_dlg:
-            self.image_reads = {image : cv2.imread(os.path.join(self.image_dir, image)) for image in self.image_names}
+            self.image_reads = {image: cv2.imread(os.path.join(self.image_dir, image)) for image in self.image_names}
 
         imgDlg.Destroy()
 
@@ -113,16 +103,6 @@ class FaceMapperFrame(wx.Frame):
 
         self.filename = None
 
-        self.face_part_list = [
-            "Left Eye",
-            "Right Eye",
-            "Mouth",
-            "Jaw",
-            "Eyebrows",
-            "Nose"
-        ]
-
-        self.faceParts = OrderedDict()
         self.faceLabels = []
 
         self.firstColors = True
@@ -134,18 +114,6 @@ class FaceMapperFrame(wx.Frame):
 
         # ---------- Colors ----
         # Set default colors
-        colourdb.updateColourDB()
-        self.color_db = wx.ColourDatabase()
-        default_colors = ['Red', 'Orange', 'Yellow', 'Green', 'Blue', 'Violet']
-        for index, facePart in enumerate(self.face_part_list):
-            self.color_db.AddColour(facePart, wx.TheColourDatabase.Find(default_colors[index]))
-
-        self.face_part_values = OrderedDict()
-        self.reset_face_part_values()
-        self.reset_default_face_parts()
-
-        self.faceNums = []
-        self.reset_face_num()
 
         self.first_click = True
         self.are_selecting_multiple = False
@@ -160,31 +128,15 @@ class FaceMapperFrame(wx.Frame):
         self.pre_drag_coords = None
 
         self.dotNum = 0
-        self.totalDotNum = 0
+        self.totalDotNum = 68
         self.dotDiam = 1.1
         self.part_counter = 0
         self.colourData = wx.ColourData()
 
-        for facePart in self.faceParts.keys():
-            self.totalDotNum += self.faceParts[facePart][1]
+        #for facePart in self.model.faceParts:
+        #    self.totalDotNum += self.model.faceParts[facePart][0]
 
-        self.coord_keys = [
-            'x',
-            'y',
-            'drawn',
-            'diameter',
-            'occluded',
-            'face_part',
-            'guess'
-        ]
-
-        self.nullArray = np.array([-1.0, -1.0])
-        self.coordMatrix = np.zeros((len(self.image_names), self.totalDotNum, len(self.coord_keys)))
-        self.coordMatrix.fill(-1.0)
-        self.default_array = np.zeros(len(self.coord_keys))
-        self.default_array.fill(-1.0)
-        self.assign_part_nums()
-
+        self.model = FaceMapperModel(self.totalDotNum)
         # ------------- Other Components ----------------
         self.CreateStatusBar()
         # ------------------- Menu ----------------------
@@ -303,69 +255,17 @@ class FaceMapperFrame(wx.Frame):
 
         # Create the default facenums list
         self.default_face_nums = []
-        for facePart in self.faceParts.keys():
+        for facePart in self.model.faceParts:
             split = facePart.split()
             abbr = ''
             for i in range(len(split)):
                 abbr += split[i].strip()[0]
-            for index in range(self.faceParts[facePart][1]):
+            for index in range(self.model.faceParts[facePart][0]):
                 self.default_face_nums.append(abbr + str(index + 1))
 
         # mirror if opening
         if csv_path:
             self.open_csv_file(csv_path)
-
-    # Resets face part values to their defaults
-    def reset_face_part_values(self):
-        self.face_part_values.clear()
-        default_vals = [6, 6, 20, 17, 10, 9]
-        for index, facePart in enumerate(self.face_part_list):
-            self.face_part_values[facePart] = default_vals[index]
-
-    # Sets the face parts to their default values, with default colors
-    def reset_default_face_parts(self):
-        self.faceParts.clear()
-        for facePart in self.face_part_list:
-            self.faceParts[facePart] = [0, int(self.face_part_values[facePart]), self.color_db.Find(facePart)]
-
-    # Zeroes out face parts
-    def zero_face_parts(self):
-        for facePart in self.face_part_list:
-            self.faceParts[facePart][0] = 0
-
-    # Makes face labels based on the face parts
-    def make_face_labels(self):
-        self.counterList.Clear()
-        self.faceLabels = []
-        part_index = 1
-        for facePart in self.face_part_list:
-            self.faceLabels.append("{0}. {1}: {2} out of {3}".format(part_index, facePart, self.faceParts[facePart][0],
-                                                                     self.faceParts[facePart][1]))
-            part_index += 1
-        self.counterList.Set(self.faceLabels)
-
-    # Makes the numbers based on face parts
-    def reset_face_num(self):
-        self.faceNums.clear()
-        for facePart in self.face_part_list:
-            split = facePart.split()
-            abbr = ''
-            for i in range(len(split)):
-                abbr += split[i].strip()[0]
-            for index in range(self.faceParts[facePart][1]):
-                self.faceNums.append(abbr + str(index + 1))
-
-    # Assign part numbers to each entry in coordinate matrix
-    def assign_part_nums(self):
-        for image in self.coordMatrix:
-            part_num = 0
-            counter = 0
-            for index, circle in enumerate(image):
-                circle[5] = float(part_num)
-                val = self.face_part_values[self.face_part_list[part_num]]
-                if index - counter + 1 == val:
-                    part_num += 1
-                    counter += val
 
     # Resets mouse events, only tracks left down, right down, and multiple select
     def bind_all_mouse_events(self):
@@ -376,82 +276,83 @@ class FaceMapperFrame(wx.Frame):
         self.Canvas.Bind(FloatCanvas.EVT_RIGHT_DOWN, self.on_right_click)
         self.Canvas.Bind(FloatCanvas.EVT_RIGHT_DCLICK, self.mark_multi_guess)
 
-    def open_csv_file(self, path):
-        """
-        Sets coordinates based on csv.
+        # Triggers on left mouse click
 
-        :param path: Path to csv.
-        :return: None
-        """
-        with open(path, 'rt') as csvfile:
-            file_names = []
-            reader = csv.reader(csvfile)
-            numRows = 0
-            for index, row in enumerate(reader):
-                filename = row[0]
-                if filename in self.image_names:
-                    file_names.append(filename)
-                    file_index = self.image_names.index(filename)
-                    points = []
-                    self.emotion_dict[filename] = row[1].split(',')
-                    for i in range(2, len(row), 3):
-                        points.append(np.array([float(row[i]), float(row[i + 1])]))
-                    for ind, point in enumerate(points):
-                        self.coordMatrix[file_index, ind, 0:2] = point
-                        self.coordMatrix[file_index, ind, 2] = 0
-                numRows += 1
-            self.select_im(self.image_names.index(file_names.pop()))
+    def on_left_down(self, event):
+        if not self.pressedKeys[wx.WXK_CONTROL]:
+            self.add_coords(event.Coords)
 
-    # Triggers on pressing "save and continue"
-    def on_button_save(self, event):
-        while self.mirror_im(event, should_save=True, check_ssim_if_smart=True):
-            self.emotion_select()
-            self.emotion_select(index=self.imageIndex + 1)
-            i = self.image_names.index(self.image_name)
-            if len(self.image_names) > i + 1:
-                if self.image_name:
-                    self.prev_image_name = self.image_name
-                self.image_name = self.image_names[i + 1]
-                self.imageIndex = self.image_names.index(self.image_name)
+    # Adds location of event to coordinate matrix
+    def add_coords(self, coords: np.ndarray):
+        length = self.model.index_first_none(self.imageIndex)
+        if length < self.totalDotNum:
+            self.model.add_point(self.imageIndex, length, coords)
+            self.display_image(zoom=False)
 
-            else:
-                print('You\'re Done!')
-                break
+    def on_right_click(self, event):
+        if wx.GetKeyState(wx.WXK_CONTROL):
+            self.pre_rotate_mouse_coords = event.Coords
+            self.pre_rotate_coords = []
+            for circle in self.selections:
+                self.half = self.find_bb_half(self.faceBB)
+                self.pre_rotate_coords.append(circle.XY - self.half)
+            self.Canvas.Bind(FloatCanvas.EVT_MOTION, self.rotate)
+        else:  # clears selections
+            if event:
+                self.are_selecting_multiple = False
+            if not self.are_selecting_multiple:
+                self.clear_all_selections()
 
-    def play(self, event):
-        self.paused = True
-        index = 0
-        while self.paused:
-            self.emotion_select()
-            self.emotion_select(index=self.imageIndex + 1)
-            i = self.image_names.index(self.image_name)
-            if len(self.image_names) > i + 1:
-                if self.image_name:
-                    self.prev_image_name = self.image_name
-                self.image_name = self.image_names[i + 1]
-                self.imageIndex = self.image_names.index(self.image_name)
-                self.mirror_im(event, should_save=True, check_ssim_if_smart=False)
-            else:
-                print('You\'re Done!')
-                break
-            #self.display_image(zoom=False)
-            wx.Yield()
+    def rotate(self, event):
+        is_right_down = wx.GetMouseState().RightIsDown()
+        if is_right_down:
+            for index, circle in enumerate(self.selections):
+                diff_coords = event.Coords - self.pre_rotate_mouse_coords
+                diff_coord_x = diff_coords[0] / 100
+                diff_coord_y = diff_coords[1] / 100
+                coord_matrix = np.array(
+                    [[self.pre_rotate_coords[index][0]], [self.pre_rotate_coords[index][1]]])
+                new_coords = self.rotate_mat(diff_coord_y, coord_matrix)
+                self.set_coords(circle, np.array([new_coords[0, 0] +
+                                                  diff_coord_x * self.pre_rotate_coords[index][0],
+                                                  new_coords[1, 0] + diff_coord_x *
+                                                  self.pre_rotate_coords[index][1]]) + self.half)
+            self.Canvas.Draw()
+        else:
+            self.bind_all_mouse_events()
 
-    def pause(self, event):
-        self.paused = False
+    def set_coords(self, circle, x_y, im_ind=None):
+        if im_ind is None:
+            im_ind = self.imageIndex
+        self.model.set_coords(circle, x_y, im_ind)
 
-    # Mirrors coordinates from previous image, if previous image exists
+    def mark_multi_guess(self, event):
+        for circle in self.selections:
+            self.model.mark_guess(circle, self.imageIndex)
+        self.display_image()
+
+
+    # Triggers on event selection
+    def on_select(self, event):
+        self.image_name = event.GetString()
+        self.select_im(index=self.image_names.index(self.image_name))
+
+    def select_im(self, index):
+        self.update_index(index)
+        self.mirror_im(event=None, should_save=False, check_ssim_if_smart=False)
+        #else:
+        #    self.display_image(zoom=True)
+
+    def update_index(self, index):
+        self.imageIndex = index
+        self.image_name = self.image_names[self.imageIndex]
+
+        # Mirrors coordinates from previous image, if previous image exists
+
     def mirror_im(self, event, should_save, check_ssim_if_smart, show=True):
-        cv_prev_image = None
-        if self.imageIndex >= 1 and self.circ_is_null(self.coordMatrix[self.imageIndex, 0,]):
-            self.coordMatrix[self.imageIndex,] = self.coordMatrix[self.imageIndex - 1,]
-            for circle in self.coordMatrix[self.imageIndex,]:
-                if not self.circ_is_null(circle):
-                    circle[2] = 0
-
+        self.model.mirror_im(self.imageIndex)
         filename = os.path.join(self.image_dir, self.image_name)
         self.current_image = wx.Image(filename)
-        self.imageIndex = self.image_names.index(self.image_name)
         self.list.SetSelection(self.imageIndex)
         self.remove_labels()
 
@@ -486,7 +387,7 @@ class FaceMapperFrame(wx.Frame):
         if self.imageIndex >= 1:
             index = self.imageIndex
             while True:
-                if not self.no_dots(index):
+                if self.model.draw_list(index):
                     self.iter_mirror(index)
                     index += 1
                 else:
@@ -494,60 +395,23 @@ class FaceMapperFrame(wx.Frame):
             self.Canvas.Draw()
 
     def iter_mirror(self, index):
-        dl = self.draw_list(index)
-        for ind in dl.keys():
+        dl = self.model.coord_list(index)
+        for ind in range(len(dl)):
             # circ_ind = self.find_circle_coord_ind(dl[ind][0:2], ind=index)
-            prev_circ = self.coordMatrix[index - 1, ind]
-            if not self.circ_is_null(prev_circ):
-                self.set_coords(self.find_circle(self.curr_image_points()[ind][0:2]), prev_circ[0:2],
+            prev_circ = self.model.coord_list(index - 1)[ind]
+            if prev_circ:
+                self.set_coords(self.model.draw_list(self.imageIndex), prev_circ[0:2],
                                 im_ind=index)
 
-    # Save coordinates to a csv file
-    def save(self, path):
-        writer = csv.writer(open(path if path[len(path) - 4:len(path)] == '.csv' else path + '.csv', 'w'))
-        first_row = [' ', ' ']
-        for faceNum in self.default_face_nums:
-            first_row.append(faceNum)
-            first_row.append('')
-            first_row.append('guess')
-        writer.writerow(first_row)
-        for index, image in enumerate(self.image_names):
-            #if not self.circ_array_is_null(self.curr_image_points(index)):
-            row = [image, ', '.join([self.emotion_choices[i] for i in self.emotion_dict[image]])]
-            for point in self.curr_image_points(index):
-                if not self.circ_is_null(point) or self.is_occluded(point):
-                    row.append(point[0])
-                    row.append(point[1])
-                    row.append(point[self.coord_keys.index('guess')])
-            writer.writerow(row)
 
-    # Triggers on event selection
-    def on_select(self, event):
-        self.image_name = event.GetString()
-        self.select_im(index=self.image_names.index(self.image_name))
+    def next_part(self, event):
+        self.model.next_part(self.imageIndex)
 
-    def emotion_select(self, event=None, index=None):
-        if index is None:
-            index = self.imageIndex
-        try:
-            self.emotion_dict[self.image_names[index]] = self.emotionList.GetSelections()
-            if self.emotionList.GetSelections() is None:
-                self.emotion_dict[self.image_names[index]] = ['None selected']
-        except:
-            pass
-
-    def select_im(self, index):
-        self.update_index(index)
-        for i in range(len(self.image_names)):
-            if i == index:
-                for circle in self.coordMatrix[i,]:
-                    if not self.circ_is_null(circle):
-                        circle[2] = 0
-        self.mirror_im(event=None, should_save=False, check_ssim_if_smart=False)
-
-    def update_index(self, index):
-        self.imageIndex = index
-        self.image_name = self.image_names[self.imageIndex]
+    def remove_labels(self):
+        self.Canvas.RemoveObjects(self.shownLabels)
+        self.shownLabels.clear()
+        self.Canvas.Draw()
+        self.labelButton.SetLabel('Show Labels')
 
     # Triggers on selecting a face part
     def color_select(self, event):
@@ -557,209 +421,19 @@ class FaceMapperFrame(wx.Frame):
         if list_dlg.ShowModal() == wx.ID_OK:
             select_string = choices[list_dlg.GetSelection()]
             if select_string == 'Choose Color':
-                num = event.GetInt()
-                name = self.face_part_list[num]
-                self.colourData.SetColour(self.faceParts[name][2])
+                name = event.GetString()
+                self.colourData.SetColour(self.model.curr_face_part_vals(name)[2])
                 color_dlg = ccd.CubeColourDialog(self, self.colourData)
                 if color_dlg.ShowModal() == wx.ID_OK:
                     self.firstColors = False
                     self.colourData = color_dlg.GetColourData()
-                    self.color_db.AddColour(name, self.colourData.GetColour())
+                    self.model.color_db.AddColour(name, self.colourData.GetColour())
                     self.display_image(zoom=False)
             elif select_string == 'Reset Num':
-                self.reset_face_part_values()
-                self.reset_default_face_parts()
-                self.reset_face_num()
+                self.model.reset_default_face_parts()
+                self.model.reset_face_num()
                 self.remove_occluded()
                 self.make_face_label_list()
-
-    def remove_occluded(self):
-        for point in self.coordMatrix[self.imageIndex]:
-            if point[4] == 1:
-                point[4] = 0
-
-    # Displays image
-    def display_image(self, zoom, re_show=False):
-        if re_show:
-            self.Canvas.InitAll()
-            if self.current_image:
-                im = self.current_image.Copy()
-                self.imHeight = im.GetHeight()
-                self.imWidth = im.GetWidth()
-                bm = im.ConvertToBitmap()
-                self.Canvas.AddScaledBitmap(bm, XY=(0, 0), Height=self.Canvas.GetSize().GetHeight(), Position='cc')
-                self.dotDiam = self.imHeight / 100
-
-        self.zero_face_parts()
-        dl = self.draw_list()
-        dl_key_list = sorted(dl.keys())
-        for index in dl_key_list:
-            coord_circle = dl[index]
-            part = list(self.faceParts.keys())[int(coord_circle[5])]
-            if coord_circle[2] == 0:
-                if index >= 1:
-                    self.dotDiam = dl[dl_key_list[dl_key_list.index(index) - 1]][3]
-                if coord_circle[3] == -1.0:
-                    coord_circle[3] = self.dotDiam
-                diam = coord_circle[3]
-
-                if index < len(self.Canvas._ForeDrawList) and self.find_circle(coord_circle[0:2]):
-                    circle = self.find_circle(coord_circle[0:2])
-                    circle.XY = coord_circle[0:2]
-                    circle.SetDiameter(diam)
-                    self.set_color(circle, self.faceParts[part][2].GetAsString())
-                else:
-                    circ = FloatCanvas.Circle(XY=coord_circle[0:2], Diameter=diam, LineWidth=.7, LineColor='Red',
-                                              FillColor='Red',
-                                              FillStyle='Transparent', InForeground=True)
-                    if coord_circle[self.coord_keys.index('guess')] == 1:
-                        circ.SetFillStyle('CrossHatch')
-                    circ = self.Canvas.AddObject(circ)
-                    circ.Bind(FloatCanvas.EVT_FC_LEFT_DOWN, self.circle_left_down)
-                    circ.Bind(FloatCanvas.EVT_FC_RIGHT_DOWN, self.circle_resize)
-                    circ.Bind(FloatCanvas.EVT_FC_ENTER_OBJECT, self.circle_hover)
-                    circ.Bind(FloatCanvas.EVT_FC_LEAVE_OBJECT, self.selection_reset)
-                    circ.Bind(FloatCanvas.EVT_FC_LEFT_DCLICK, self.mark_guess)
-                    self.set_color(circ, self.faceParts[part][2].GetAsString())
-
-                coord_circle[2] = 1
-
-        self.make_face_label_list()
-
-        self.Canvas.Draw()
-        if len(self.Canvas._ForeDrawList) >= 1:
-            self.faceBB = Utilities.BBox.fromPoints([circ.XY for circ in self.Canvas._ForeDrawList])
-        if zoom:
-            if len(self.Canvas._ForeDrawList) >= 1 and distance(p1=self.faceBB[0],
-                                                                p2=self.faceBB[1]) >= self.imHeight / 5:
-                self.Canvas.ZoomToBB(self.faceBB)
-
-    # Triggers on left mouse click
-    def on_left_down(self, event):
-        if not self.pressedKeys[wx.WXK_CONTROL]:
-            self.add_coords(event.Coords)
-
-    # Adds location of event to coordinate matrix
-    def add_coords(self, coords):
-        if self.length_of_coord_matrix() < self.totalDotNum:
-            free_pos = self.find_first_free_pos()
-            self.coordMatrix[self.imageIndex, free_pos, 0:3] = np.append(coords, np.array([0.0]))
-            self.coordMatrix[self.imageIndex, free_pos, self.coord_keys.index('guess')] = 0.0
-            self.display_image(zoom=False)
-
-    # Triggers when clicking inside of a circle
-    def circle_left_down(self, circle):
-        if wx.GetKeyState(wx.WXK_CONTROL):
-            self.select_part(self.curr_image_points()[self.find_circle_coord_ind(circle.XY)][5])
-        else:
-            self.draggingCircle = circle
-            self.draggingCircleIndex = self.Canvas._ForeDrawList.index(self.draggingCircle)
-            self.pre_drag_coords = self.draggingCircle.XY
-            self.Canvas.Bind(FloatCanvas.EVT_MOTION, self.drag)
-            self.Canvas.Draw()
-
-    # Redraws circle at location of mouse while dragging
-    def drag(self, event):
-        is_left_down = wx.GetMouseState().LeftIsDown()
-        if self.draggingCircle in self.selections:
-            if is_left_down:
-                for circle in self.selections:
-                    self.set_coords(circle, circle.XY + event.Coords - self.pre_drag_coords)
-                self.Canvas.Draw()
-                self.pre_drag_coords = event.Coords
-            else:
-                self.bind_all_mouse_events()
-
-        else:
-            self.are_selecting_multiple = False
-            self.on_right_click(event=None)
-            if is_left_down:
-                self.set_coords(self.draggingCircle, event.Coords)
-                self.draggingCircle.SetLineStyle('Dot')
-                self.Canvas.Draw()
-            else:
-                self.draggingCircle.SetLineStyle('Solid')
-                self.bind_all_mouse_events()
-
-    # Triggers when right-clicking a circle
-    def circle_resize(self, circle):
-        self.pre_size_coords = circle.XY
-        self.resizing_circle = circle
-        self.resizing_circle_index = self.Canvas._ForeDrawList.index(self.resizing_circle)
-        self.Canvas.Bind(FloatCanvas.EVT_MOTION, self.resize)
-
-    # Redraws circle at size based on dragging mouse
-    def resize(self, event):
-        is_right_down = wx.GetMouseState().RightIsDown()
-        curr_y_coord = event.Coords[1]
-        if is_right_down:
-            if wx.GetKeyState(wx.WXK_CONTROL):  # If CTRL key is pressed, resize all circles in selections
-                for circle in self.selections:
-                    self.gen_resize(circle, self.resizing_circle, curr_y_coord)
-            else:
-                self.gen_resize(self.resizing_circle, self.resizing_circle, curr_y_coord)
-            self.pre_size_coords = event.Coords
-            self.Canvas.Draw()
-
-        else:
-            self.bind_all_mouse_events()
-
-    def gen_resize(self, circle, hit_circle, new_coord):
-        pre_size_coords = hit_circle.XY
-        pre_circ_coords = circle.XY
-        diff_coords = (new_coord - pre_size_coords[1]) * .1 + abs(circle.WH)
-        diff = diff_coords[0] + diff_coords[1]
-        if diff > 0:
-            index = self.find_circle_coord_ind(pre_circ_coords)
-            self.coordMatrix[self.imageIndex, index, 3] = diff
-            circle.SetDiameter(diff)
-
-    # Triggers when hovering over circle
-    def circle_hover(self, circle):
-        if not self.are_selecting_multiple:
-            self.selectionText.SetLabel('Hovering Over ' + str(self.make_face_label(circle)))
-            self.Canvas.Bind(FloatCanvas.EVT_MOUSEWHEEL, self.on_cmd_scroll)
-            self.scrollingCircle = circle
-
-    def display_selections(self):
-        if len(self.selections) >= 1:
-            selection_text = 'Current selections: ' + self.make_face_label(list(self.selections.keys())[0])
-            for i in range(1, len(self.selections.keys())):
-                selection_text += ', ' + self.make_face_label(list(self.selections.keys())[i])
-            self.selectionText.SetLabel(selection_text)
-        else:
-            self.selectionText.SetLabel('No Selections')
-
-    # Allows one to change the color of a circle set by pressing CTRL and scrolling
-    def on_cmd_scroll(self, event):
-        if self.pressedKeys[wx.WXK_CONTROL]:
-            coord_circ = self.curr_image_points()[self.find_circle_coord_ind(self.scrollingCircle.XY)]
-            colorList = wx.lib.colourdb.getColourList()
-            part = list(self.faceParts.keys())[int(coord_circ[5])]
-            curr_color = self.faceParts[part][2]
-            hsv_color = colorsys.rgb_to_hsv(curr_color.Red(), curr_color.Green(), curr_color.Blue())
-            if event.GetWheelRotation() > 0:
-                delta = .05
-            else:
-                delta = -.05
-            new_color = colorsys.hsv_to_rgb(hsv_color[0] + delta, hsv_color[1], hsv_color[2])
-            self.color_db.AddColour(part, wx.Colour(new_color[0], new_color[1], new_color[2], alpha=wx.ALPHA_OPAQUE))
-            self.faceParts[part][2] = wx.Colour(new_color[0], new_color[1], new_color[2], alpha=wx.ALPHA_OPAQUE)
-            self.display_image(zoom=False)
-
-    def on_key_press(self, event):
-        self.pressedKeys[event.GetKeyCode()] = True
-        if event.GetKeyCode() == wx.WXK_DELETE:
-            self.del_selections()
-
-    def select_part(self, index):
-        self.clear_all_selections()
-        for circle in self.curr_image_points():
-            if not self.circ_is_null(circle) and circle[5] == index:
-                self.add_to_selections(self.find_circle(circle[0:2]))
-
-    def on_key_release(self, event):
-        self.pressedKeys[event.GetKeyCode()] = False
 
     def multi_select(self, event):
         is_left_down = wx.GetMouseState().LeftIsDown()
@@ -785,19 +459,10 @@ class FaceMapperFrame(wx.Frame):
             self.Canvas.Draw()
             self.Canvas.Bind(FloatCanvas.EVT_LEFT_UP, self.fin_select)
 
-    def del_selections(self):
-        for circle in list(self.selections.keys()):
-            index = self.find_circle_coord_ind(self.selections[circle])
-            self.coordMatrix[self.imageIndex, index] = self.default_array
-        self.Canvas.RemoveObjects(self.selections)
-        self.clear_all_selections()
-        self.assign_part_nums()
-        self.display_image(zoom=False)
-
     def fin_select(self, event):
         # self.selections.clear()
         if self.select_rectangle:
-            for circle in self.Canvas._ForeDrawList:
+            for circle in self.model.not_none_draw_list(self.imageIndex):
                 if self.check_if_contained(circle):
                     self.add_to_selections(circle)
             self.Canvas.RemoveObject(self.select_rectangle, ResetBB=False)
@@ -806,10 +471,6 @@ class FaceMapperFrame(wx.Frame):
         self.bind_all_mouse_events()
         self.display_selections()
         self.Canvas.Draw()
-
-    def add_to_selections(self, circle):
-        self.selections[circle] = circle.XY
-        circle.SetLineStyle('Dot')
 
     def check_if_contained(self, circle):
         c_x, c_y = circle.XY
@@ -825,121 +486,59 @@ class FaceMapperFrame(wx.Frame):
         else:
             return False
 
-    def on_right_click(self, event):
-        if wx.GetKeyState(wx.WXK_CONTROL):
-            self.pre_rotate_mouse_coords = event.Coords
-            self.pre_rotate_coords = []
-            for circle in self.selections:
-                self.half = self.find_bb_half(self.faceBB)
-                self.pre_rotate_coords.append(circle.XY - self.half)
-            self.Canvas.Bind(FloatCanvas.EVT_MOTION, self.rotate)
-        else:  # clears selections
-            if event:
-                self.are_selecting_multiple = False
-            if not self.are_selecting_multiple:
-                self.clear_all_selections()
+    def add_to_selections(self, circle):
+        self.selections[circle] = circle.XY
+        circle.SetLineStyle('Dot')
 
-    def mark_multi_guess(self, event):
-        for circle in self.selections:
-            self.mark_guess(circle)
-
-    def mark_guess(self, object):
-        val = self.curr_image_points()[self.find_circle_coord_ind(object.XY)][self.coord_keys.index('guess')]
-
-        if val == 1.0:
-            self.curr_image_points()[self.find_circle_coord_ind(object.XY)][self.coord_keys.index('guess')] = 0.0
-            object.SetFillStyle('Transparent')
+    def display_selections(self):
+        if len(self.selections) >= 1:
+            selection_text = 'Current selections: ' + self.model.make_face_label(list(self.selections.keys())[0],
+                                                                                 self.imageIndex)
+            for i in range(1, len(self.selections.keys())):
+                selection_text += ', ' + self.model.make_face_label(list(self.selections.keys())[i], self.imageIndex)
+            self.selectionText.SetLabel(selection_text)
         else:
-            self.curr_image_points()[self.find_circle_coord_ind(object.XY)][self.coord_keys.index('guess')] = 1.0
-            object.SetFillStyle('CrossHatch')
-
-        self.Canvas.Draw()
-
-    def clear_all_selections(self):
-        for circle in self.Canvas._ForeDrawList:
-            circle.SetLineStyle('Solid')
-        if self.select_rectangle:
-            self.rectangleStart = None
-            self.Canvas.RemoveObject(self.select_rectangle)
-            self.select_rectangle = None
-        self.selections.clear()
-        self.display_selections()
-        self.Canvas.Draw()
-
-    def rotate(self, event):
-        is_right_down = wx.GetMouseState().RightIsDown()
-        if is_right_down:
-            for index, circle in enumerate(self.selections):
-                diff_coords = event.Coords - self.pre_rotate_mouse_coords
-                diff_coord_x = diff_coords[0] / 100
-                diff_coord_y = diff_coords[1] / 100
-                coord_matrix = np.array([[self.pre_rotate_coords[index][0]], [self.pre_rotate_coords[index][1]]])
-                new_coords = self.rotate_mat(diff_coord_y, coord_matrix)
-                self.set_coords(circle, np.array([new_coords[0, 0] +
-                                                  diff_coord_x * self.pre_rotate_coords[index][0],
-                                                  new_coords[1, 0] + diff_coord_x *
-                                                  self.pre_rotate_coords[index][1]]) + self.half)
-            self.Canvas.Draw()
-        else:
-            self.bind_all_mouse_events()
-
-    # Resets selection text
-    def selection_reset(self, object):
-        is_left_down = wx.GetMouseState().LeftIsDown()
-        is_right_down = wx.GetMouseState().RightIsDown()
-        if not (is_right_down or is_left_down or self.are_selecting_multiple):
-            self.are_selecting_multiple = False
-            self.bind_all_mouse_events()
-            self.selections.clear()
             self.selectionText.SetLabel('No Selections')
 
-    # Shows face numbers for each circle
-    def show_labels(self, event):
-        if len(self.shownLabels) == 0:
-            part_dict = self.part_dict()
-            for index in part_dict.keys():
-                face_part_circles = part_dict[index]
-                face_part_bb = Utilities.BBox.fromPoints([circle[0:2] for circle in face_part_circles])
-                face_part_bb_center = self.find_bb_half(face_part_bb)
-                for circle in face_part_circles:
-                    circle = self.find_circle(circle[0:2])
-                    coord_diff = circle.XY - face_part_bb_center
-                    mag_coord_diff = np.sqrt(np.square(coord_diff[0]) + np.square(coord_diff[1]))
-                    unit_coord_diff = np.array(
-                        [np.divide(coord_diff[0], mag_coord_diff), np.divide(coord_diff[1], mag_coord_diff)])
-                    theta = math.atan2(unit_coord_diff[1], unit_coord_diff[0])
-                    w = np.array([circle.WH[0], 0.0])
-                    w_h_in_dir_of_diff = self.rotate_mat(theta, 2 * w.transpose())
-                    t = FloatCanvas.ScaledText(String=self.make_face_label(circle),
-                                               XY=(circle.XY + w_h_in_dir_of_diff.transpose()),
-                                               Size=circle.WH[0] * .85,
-                                               Color=circle.LineColor)
-                    t = self.Canvas.AddObject(t)
-                    self.shownLabels.append(t)
-            self.Canvas.Draw()
-            self.labelButton.SetLabel('Hide Labels')
-        else:
-            self.remove_labels()
+    def remove_occluded(self):
+        self.model.remove_occluded(self.imageIndex)
 
     def make_face_label_list(self):
-        dl = self.draw_list()
-        for index in sorted(dl.keys()):
-            circle = dl[index]
-            face_part = self.faceParts[self.face_part_list[int(circle[5])]]
-            face_part[0] += 1
-            circle = self.find_circle(dl[index][0:2])
-            if circle is not None:
-                self.set_color(circle, face_part[2].GetAsString())
-                circle.SetLineStyle('Solid')
-
+        self.model.make_face_label_list(self.imageIndex)
         self.make_face_labels()
 
-    @staticmethod
-    def set_color(circle, color):
-        circle.SetColor(color)
-        circle.SetFillColor(color)
+    def make_face_labels(self):
+        self.counterList.Clear()
+        self.counterList.Set(self.model.faceLabels)
 
-    # Triggers on opening of CSV file
+    def emotion_select(self, event=None, index=None):
+        if index is None:
+            index = self.imageIndex
+        try:
+            self.emotion_dict[self.image_names[index]] = self.emotionList.GetSelections()
+            if self.emotionList.GetSelections() is None:
+                self.emotion_dict[self.image_names[index]] = ['None selected']
+        except:
+            pass
+
+    # Triggers on pressing "save and continue"
+    def on_button_save(self, event):
+        while self.mirror_im(event, should_save=True, check_ssim_if_smart=True):
+            self.emotion_select()
+            self.emotion_select(index=self.imageIndex + 1)
+            i = self.image_names.index(self.image_name)
+            if len(self.image_names) > i + 1:
+                if self.image_name:
+                    self.prev_image_name = self.image_name
+                self.image_name = self.image_names[i + 1]
+                self.imageIndex = self.image_names.index(self.image_name)
+
+            else:
+                print('You\'re Done!')
+                break
+
+                # Triggers on opening of CSV file
+
     def on_open(self, event):
         print("Open")
         fd = wx.FileDialog(self, style=wx.FD_OPEN)
@@ -948,6 +547,53 @@ class FaceMapperFrame(wx.Frame):
         print("On Open...", self.filename)
 
         self.open_csv_file(self.filename)
+
+        # Triggers on close action
+
+    def on_close(self, event):
+        dlg = wx.MessageDialog(self, message="Would you like to save the coordinates before exiting?",
+                               style=wx.YES_NO | wx.YES_DEFAULT)
+        result = dlg.ShowModal()
+        if result == wx.ID_YES:
+            print("Saving...")
+            self.on_save(event)
+        else:
+            print("Discarding changes...")
+
+        # Pass this on to the default handler.
+        event.Skip()
+        for image in self.image_names:
+            print('Removing ' + image)
+            if os.path.exists(os.path.join(self.image_dir, image)):
+                os.remove(os.path.join(self.image_dir, image))
+        print('Done!')
+        sys.exit(0)
+
+    def open_csv_file(self, path):
+        """
+        Sets coordinates based on csv.
+
+        :param path: Path to csv.
+        :return: None
+        """
+        with open(path, 'rt') as csvfile:
+            file_names = []
+            reader = csv.reader(csvfile)
+            numRows = 0
+            for index, row in enumerate(reader):
+                filename = row[0]
+                if filename in self.image_names:
+                    file_names.append(filename)
+                    file_index = self.image_names.index(filename)
+                    points = []
+                    self.emotion_dict[filename] = row[1].split(',')
+                    for i in range(2, len(row), 3):
+                        points.append(np.array([float(row[i]), float(row[i + 1])]))
+                    for ind, point in enumerate(points):
+                        self.model.add_point(self.imageIndex, point)
+
+                numRows += 1
+            self.select_im(self.image_names.index(file_names.pop()))
 
     # Triggers on save action
     def on_save(self, event):
@@ -966,101 +612,125 @@ class FaceMapperFrame(wx.Frame):
 
         self.save(self.filename)
 
-    # Triggers on close action
-    def on_close(self, event):
-        dlg = wx.MessageDialog(self, message="Would you like to save the coordinates before exiting?",
-                               style=wx.YES_NO | wx.YES_DEFAULT)
-        result = dlg.ShowModal()
-        if result == wx.ID_YES:
-            print("Saving...")
-            self.on_save(event)
-        else:
-            print("Discarding changes...")
+    # Save coordinates to a csv file
+    def save(self, path):
+        writer = csv.writer(open(path if path[len(path) - 4:len(path)] == '.csv' else path + '.csv', 'w'))
+        first_row = [' ', ' ']
+        for faceNum in self.default_face_nums:
+            first_row.append(faceNum)
+            first_row.append('')
+            first_row.append('guess')
+        writer.writerow(first_row)
+        for index, image in enumerate(self.image_names):
+            row = [image, ', '.join([self.emotion_choices[i] for i in self.emotion_dict[image]])]
+            for point in self.model.coord_list(index):
+                if point:
+                    row.append(point[0])
+                    row.append(point[1])
+                    row.append(point[self.model.coord_keys.index('guess')])
+                else:
+                    row.append('')
+            writer.writerow(row)
 
-        # Pass this on to the default handler.
-        event.Skip()
-        for image in self.image_names:
-             print('Removing ' + image)
-             if os.path.exists(os.path.join(self.image_dir, image)):
-                 os.remove(os.path.join(self.image_dir, image))
-        print('Done!')
-        sys.exit(0)
+    def play(self, event):
+        self.paused = True
+        while self.paused:
+            self.emotion_select()
+            self.emotion_select(index=self.imageIndex + 1)
+            i = self.image_names.index(self.image_name)
+            if len(self.image_names) > i + 1:
+                if self.image_name:
+                    self.prev_image_name = self.image_name
+                self.image_name = self.image_names[i + 1]
+                self.imageIndex = self.image_names.index(self.image_name)
+                self.mirror_im(event, should_save=True, check_ssim_if_smart=False)
+            else:
+                print('You\'re Done!')
+                break
+            # self.display_image(zoom=False)
+            wx.Yield()
 
-    # Changes an array to standard null array
-    def remove_array(self, l, arr):
-        ind = 0
-        size = len(l)
-        while ind != size and not np.array_equal(l[ind][0:2], arr):
-            ind += 1
-        if ind != size:
-            l[ind] = self.nullArray
-            return ind
-        else:
-            raise ValueError('array not found in list.')
+    def pause(self, event):
+        self.paused = False
 
-    # Returns face number for a given circle
-    def make_face_label(self, circle):
-        if not np.array_equal(circle.XY, self.nullArray[0:2]):
-            return str(self.faceNums[self.find_circle_coord_ind(circle.XY)])
+    def on_key_press(self, event):
+        self.pressedKeys[event.GetKeyCode()] = True
+        if event.GetKeyCode() == wx.WXK_DELETE:
+            self.del_selections()
 
-    def remove_labels(self):
-        self.Canvas.RemoveObjects(self.shownLabels)
-        self.shownLabels.clear()
+    def on_key_release(self, event):
+        self.pressedKeys[event.GetKeyCode()] = False
+
+
+    def del_selections(self):
+        for circle in list(self.selections.keys()):
+            self.model.delete_circle(self.imageIndex, circle)
+        self.Canvas.RemoveObjects(self.selections)
+        self.clear_all_selections()
+
+        #TODO: Why is this here
+        self.assign_part_nums()
+
+        self.display_image(zoom=False)
+
+    def clear_all_selections(self):
+        for circle in self.model.not_none_draw_list(self.imageIndex):
+            circle.SetLineStyle('Solid')
+        if self.select_rectangle:
+            self.rectangleStart = None
+            self.Canvas.RemoveObject(self.select_rectangle)
+            self.select_rectangle = None
+        self.selections.clear()
+        self.display_selections()
         self.Canvas.Draw()
-        self.labelButton.SetLabel('Show Labels')
 
-    def next_part(self, event):
-        ind = self.find_first_free_pos() - 1
-        part_index = self.curr_image_points()[ind, 5]
-        currPart = self.face_part_list[int(part_index)]
-        self.faceParts[currPart][1] = self.faceParts[currPart][0]
-        next_circ = self.curr_image_points()[ind + 1]
-        while next_circ[5] == part_index:
-            next_circ[4] = 1.0
-            ind += 1
-            next_circ = self.curr_image_points()[ind + 1]
-        self.make_face_labels()
+    # Assign part numbers to current entry in coordinate matrix
+    def assign_part_nums(self):
+        part_num = 0
+        counter = 0
+        for index, circle in enumerate(self.model.coord_list(self.imageIndex)):
+            if circle:
+                circle[self.model.coord_keys.index('face_part')] = float(part_num)
+                val = self.model.face_part_values[self.model.face_part_list[part_num]]
+                if index - counter + 1 == val:
+                    part_num += 1
+                    counter += val
 
-    def set_coords(self, circle, x_y, im_ind=None):
-        if im_ind is None:
-            im_ind = self.imageIndex
-        index = self.find_circle_coord_ind(circle.XY)
-        circle.XY = x_y
-        self.coordMatrix[im_ind, index, 0:2] = x_y
 
-    def find_circle(self, x_y):
-        # x_y_list = [circle.XY for circle in self.Canvas._ForeDrawList]
-        for index, circle in enumerate(self.Canvas._ForeDrawList):
-            if np.array_equal(circle.XY, x_y):
-                return self.Canvas._ForeDrawList[index]
-        return None
+    # TODO: Fix
+    def show_labels(self, event):
+        if len(self.shownLabels) == 0:
+            part_dict = self.part_dict()
+            for index in part_dict.keys():
+                face_part_circles = part_dict[index]
+                face_part_bb = Utilities.BBox.fromPoints([circle[0:2] for circle in face_part_circles])
+                face_part_bb_center = self.find_bb_half(face_part_bb)
+                for circle in face_part_circles:
+                    circle = self.model.draw_list(self.imageIndex)[self.model.coord_list(self.imageIndex).index(circle)]
+                    coord_diff = circle.XY - face_part_bb_center
+                    mag_coord_diff = np.sqrt(np.square(coord_diff[0]) + np.square(coord_diff[1]))
+                    unit_coord_diff = np.array(
+                        [np.divide(coord_diff[0], mag_coord_diff), np.divide(coord_diff[1], mag_coord_diff)])
+                    theta = math.atan2(unit_coord_diff[1], unit_coord_diff[0])
+                    w = np.array([circle.WH[0], 0.0])
+                    w_h_in_dir_of_diff = self.rotate_mat(theta, 2 * w.transpose())
+                    t = FloatCanvas.ScaledText(String=self.model.make_face_label(circle, self.imageIndex),
+                                               XY=(circle.XY + w_h_in_dir_of_diff.transpose()),
+                                               Size=circle.WH[0] * .85,
+                                               Color=circle.LineColor)
+                    t = self.Canvas.AddObject(t)
+                    self.shownLabels.append(t)
+            self.Canvas.Draw()
+            self.labelButton.SetLabel('Hide Labels')
+        else:
+            self.remove_labels()
 
-    def find_circle_coord_ind(self, x_y, ind=None):
-        if ind is None:
-            ind = self.imageIndex
-        x_y_list = [tuple(circle[0:2]) for circle in self.coordMatrix[ind,]]
-        for index, circle in enumerate(x_y_list):
-            if np.array_equal(circle, x_y):
-                return index
-        raise ValueError
-
-    def find_first_free_pos(self):
-        for i in range(self.totalDotNum):
-            circ = self.coordMatrix[self.imageIndex, i,]
-            if self.circ_is_null(circ) and circ[4] != 1:
-                return i
-
-    def draw_list(self, ind=None):
-        if ind is None:
-            ind = self.imageIndex
-        return {index: circ for index, circ in enumerate(self.curr_image_points(ind)) if
-                (not self.circ_is_null(circ) and not self.is_occluded(circ))}
-
+    # TODO: Fix
     def part_dict(self):
         return {k: v for k, v in {
-            index: [circle for circle in self.curr_image_points() if
-                    (circle[5] == index and not self.circ_is_null(circle))]
-            for index in range(len(self.faceParts.keys()))}.items() if len(v) > 1}
+            index: [circle for circle in self.model.coord_list(self.imageIndex) if
+                    (circle[self.model.coord_keys.index('guess')] == index and circle)]
+            for index in range(len(self.model.faceParts.keys()))}.items() if len(v) > 1}
 
     @staticmethod
     def find_bb_half(bbox):
@@ -1076,41 +746,155 @@ class FaceMapperFrame(wx.Frame):
                                     [math.sin(theta), math.cos(theta)]])
         return np.dot(rotation_matrix, mat)
 
-    @staticmethod
-    def is_occluded(circ_array):
-        return circ_array[4] == 1.0
 
-    def is_null(self, circ_array, property):
-        num = circ_array[self.coord_keys.index(property)]
-        test = num == -1.0
-        return test
+    def display_image(self, zoom, re_show = False):
+        if re_show:
+            self.Canvas.InitAll()
+            if self.current_image:
+                im = self.current_image.Copy()
+                self.imHeight = im.GetHeight()
+                self.imWidth = im.GetWidth()
+                bm = im.ConvertToBitmap()
+                self.Canvas.AddScaledBitmap(bm, XY=(0, 0), Height= self.Canvas.GetSize().GetHeight(), Position='cc')
+                self.dotDiam = self.imHeight/100
+        self.model.zero_face_parts()
+        dl = self.model.not_none_draw_list(self.imageIndex)
+        cl = self.model.not_none_coord_list(self.imageIndex)
+        for index, circle in enumerate(dl):
+            coord_circle = cl[index]
+            if not coord_circle[self.model.coord_keys.index('drawn')]:
+                part = self.model.face_part_list[coord_circle[self.model.coord_keys.index('face_part')]]
+                circle.SetColor(self.model.curr_face_part_vals(part)[2].GetAsString())
+                circle.SetDiameter(coord_circle[self.model.coord_keys.index('diameter')])
+                if coord_circle[self.model.coord_keys.index('guess')] == 1:
+                    circle.SetFillStyle('CrossHatch')
+                circ = self.Canvas.AddObject(circle)
+                circ.Bind(FloatCanvas.EVT_FC_LEFT_DOWN, self.circle_left_down)
+                circ.Bind(FloatCanvas.EVT_FC_RIGHT_DOWN, self.circle_resize)
+                circ.Bind(FloatCanvas.EVT_FC_ENTER_OBJECT, self.circle_hover)
+                circ.Bind(FloatCanvas.EVT_FC_LEAVE_OBJECT, self.selection_reset)
+                circ.Bind(FloatCanvas.EVT_FC_LEFT_DCLICK, self.model.mark_guess)
+                coord_circle[self.model.coord_keys.index('drawn')] = 1
 
-    def curr_image_points(self, ind=None):
-        if ind is None:
-            ind = self.imageIndex
-        return self.coordMatrix[ind,]
+        self.make_face_label_list()
 
-    def circ_is_null(self, circle):
-        return np.array_equal(circle[0:2], self.nullArray)
+        self.Canvas.Draw()
+        if len(dl) >= 1:
+            self.faceBB = Utilities.BBox.fromPoints([circ.XY for circ in dl])
 
-    def circ_array_is_null(self, arr):
-        for circle in arr:
-            if not self.circ_is_null(circle):
-                return False
-        return True
+        if zoom:
+            if len(dl) >= 1 and distance(p1=self.faceBB[0], p2=self.faceBB[1]) >= self.imHeight / 5:
+                self.Canvas.ZoomToBB(self.faceBB)
 
-    def no_dots(self, index):
-        for circle in self.coordMatrix[index,]:
-            if not self.circ_is_null(circle):
-                return False
-        return True
+    # Triggers when clicking inside of a circle
+    def circle_left_down(self, circle):
+        if wx.GetKeyState(wx.WXK_CONTROL):
+            self.select_part(self.model.coord_list(self.imageIndex)[self.model.draw_list(self.imageIndex).index(circle)][5])
+        else:
+            self.draggingCircle = circle
+            self.draggingCircleIndex = self.model.draw_list(self.imageIndex).index(self.draggingCircle)
+            self.pre_drag_coords = self.draggingCircle.XY
+            self.Canvas.Bind(FloatCanvas.EVT_MOTION, self.drag)
+            self.Canvas.Draw()
 
-    def length_of_coord_matrix(self):
-        last = -1
-        for index, circle in enumerate(self.curr_image_points()):
-            if not self.circ_is_null(circle):
-                last = index
-        return last + 1
+    def select_part(self, index):
+        self.clear_all_selections()
+        for circInd, circle in self.model.coord_list(self.imageIndex):
+            if circle and circle[self.model.coord_keys.index('face_part')] == index:
+                self.add_to_selections(self.model.draw_list(self.imageIndex)[circInd])
+
+    # Triggers when right-clicking a circle
+    def circle_resize(self, circle):
+        self.pre_size_coords = circle.XY
+        self.resizing_circle = circle
+        self.resizing_circle_index = self.model.draw_list(self.imageIndex).index(self.resizing_circle)
+        self.Canvas.Bind(FloatCanvas.EVT_MOTION, self.resize)
+
+        # Redraws circle at size based on dragging mouse
+
+    def resize(self, event):
+        is_right_down = wx.GetMouseState().RightIsDown()
+        curr_y_coord = event.Coords[1]
+        if is_right_down:
+            if wx.GetKeyState(wx.WXK_CONTROL):  # If CTRL key is pressed, resize all circles in selections
+                for circle in self.selections:
+                    self.gen_resize(circle, self.resizing_circle, curr_y_coord)
+            else:
+                self.gen_resize(self.resizing_circle, self.resizing_circle, curr_y_coord)
+            self.pre_size_coords = event.Coords
+            self.Canvas.Draw()
+
+        else:
+            self.bind_all_mouse_events()
+
+    def gen_resize(self, circle, hit_circle, new_coord):
+        pre_size_coords = hit_circle.XY
+        pre_circ_coords = circle.XY
+        diff_coords = (new_coord - pre_size_coords[1]) * .1 + abs(circle.WH)
+        diff = diff_coords[0] + diff_coords[1]
+        if diff > 0:
+            self.model.coord_list(self.imageIndex)[self.model.draw_list(self.imageIndex).index(hit_circle)][self.model.coord_keys.index('diameter')] = diff
+            circle.SetDiameter(diff)
+
+            # Redraws circle at location of mouse while dragging
+
+    def drag(self, event):
+        is_left_down = wx.GetMouseState().LeftIsDown()
+        if self.draggingCircle in self.selections:
+            if is_left_down:
+                for circle in self.selections:
+                    self.set_coords(circle, circle.XY + event.Coords - self.pre_drag_coords)
+                self.Canvas.Draw()
+                self.pre_drag_coords = event.Coords
+            else:
+                self.bind_all_mouse_events()
+
+        else:
+            self.are_selecting_multiple = False
+            self.on_right_click(event=None)
+            if is_left_down:
+                self.set_coords(self.draggingCircle, event.Coords)
+                self.draggingCircle.SetLineStyle('Dot')
+            else:
+                self.draggingCircle.SetLineStyle('Solid')
+                self.bind_all_mouse_events()
+
+            self.Canvas.Draw()
+# Triggers when hovering over circle
+    def circle_hover(self, circle):
+        if not self.are_selecting_multiple:
+            self.selectionText.SetLabel('Hovering Over ' + str(self.model.make_face_label(circle, self.imageIndex)))
+            self.Canvas.Bind(FloatCanvas.EVT_MOUSEWHEEL, self.on_cmd_scroll)
+            self.scrollingCircle = circle
+
+            # Allows one to change the color of a circle set by pressing CTRL and scrolling
+
+    def on_cmd_scroll(self, event):
+        if self.pressedKeys[wx.WXK_CONTROL]:
+            coord_circ = self.model.coord_list(self.imageIndex)[self.model.draw_list(self.imageIndex).index(self.scrollingCircle)]
+            colorList = wx.lib.colourdb.getColourList()
+            part = list(self.model.face_part_list)[int(coord_circ[self.model.coord_keys.index('face_part')])]
+            curr_color = self.model.curr_face_part_vals(part)[2]
+            hsv_color = colorsys.rgb_to_hsv(curr_color.Red(), curr_color.Green(), curr_color.Blue())
+            if event.GetWheelRotation() > 0:
+                delta = .05
+            else:
+                delta = -.05
+            new_color = colorsys.hsv_to_rgb(hsv_color[0] + delta, hsv_color[1], hsv_color[2])
+            self.model.color_db.AddColour(part, wx.Colour(new_color[0], new_color[1], new_color[2], alpha=wx.ALPHA_OPAQUE))
+            self.model.curr_face_part_vals(part)[2] = wx.Colour(new_color[0], new_color[1], new_color[2], alpha=wx.ALPHA_OPAQUE)
+            self.display_image(zoom=False)
+
+
+    # Resets selection text
+    def selection_reset(self, object):
+        is_left_down = wx.GetMouseState().LeftIsDown()
+        is_right_down = wx.GetMouseState().RightIsDown()
+        if not (is_right_down or is_left_down or self.are_selecting_multiple):
+            self.are_selecting_multiple = False
+            self.bind_all_mouse_events()
+            self.selections.clear()
+            self.selectionText.SetLabel('No Selections')
 
 
 def distance(p1, p2):
