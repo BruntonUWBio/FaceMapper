@@ -1,19 +1,18 @@
 import colorsys
 import csv
 import glob
+import math
+import os
+import subprocess
+import sys
 from collections import OrderedDict, defaultdict
 
 import cv2
-import os
 import numpy as np
-import math
-from skimage.measure import compare_ssim as ssim
-import sys
-import subprocess
-
-from internal.FaceMapperModel import FaceMapperModel
 import wx
 import wx.lib.agw.cubecolourdialog as ccd
+from FaceMapperModel import FaceMapperModel
+from skimage.measure import compare_ssim as ssim
 from wx.lib import colourdb
 from wx.lib.floatcanvas import NavCanvas, Utilities, FloatCanvas
 
