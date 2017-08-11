@@ -132,7 +132,7 @@ class FaceMapperFrame(wx.Frame):
         self.part_counter = 0
         self.colourData = wx.ColourData()
 
-        #for facePart in self.model.faceParts:
+        # for facePart in self.model.faceParts:
         #    self.totalDotNum += self.model.faceParts[facePart][0]
 
         self.model = FaceMapperModel(self.totalDotNum)
@@ -330,7 +330,6 @@ class FaceMapperFrame(wx.Frame):
             self.model.mark_guess(circle, self.imageIndex)
         self.display_image()
 
-
     # Triggers on event selection
     def on_select(self, event):
         self.image_name = event.GetString()
@@ -339,7 +338,7 @@ class FaceMapperFrame(wx.Frame):
     def select_im(self, index):
         self.update_index(index)
         self.mirror_im(event=None, should_save=False, check_ssim_if_smart=False)
-        #else:
+        # else:
         #    self.display_image(zoom=True)
 
     def update_index(self, index):
@@ -401,7 +400,6 @@ class FaceMapperFrame(wx.Frame):
             if prev_circ:
                 self.set_coords(self.model.draw_list(self.imageIndex), prev_circ[0:2],
                                 im_ind=index)
-
 
     def next_part(self, event):
         self.model.next_part(self.imageIndex)
@@ -660,14 +658,13 @@ class FaceMapperFrame(wx.Frame):
     def on_key_release(self, event):
         self.pressedKeys[event.GetKeyCode()] = False
 
-
     def del_selections(self):
         for circle in list(self.selections.keys()):
             self.model.delete_circle(self.imageIndex, circle)
         self.Canvas.RemoveObjects(self.selections)
         self.clear_all_selections()
 
-        #TODO: Why is this here
+        # TODO: Why is this here
         self.assign_part_nums()
 
         self.display_image(zoom=False)
@@ -694,7 +691,6 @@ class FaceMapperFrame(wx.Frame):
                 if index - counter + 1 == val:
                     part_num += 1
                     counter += val
-
 
     # TODO: Fix
     def show_labels(self, event):
@@ -745,8 +741,7 @@ class FaceMapperFrame(wx.Frame):
                                     [math.sin(theta), math.cos(theta)]])
         return np.dot(rotation_matrix, mat)
 
-
-    def display_image(self, zoom, re_show = False):
+    def display_image(self, zoom, re_show=False):
         if re_show:
             self.Canvas.InitAll()
             if self.current_image:
@@ -754,8 +749,8 @@ class FaceMapperFrame(wx.Frame):
                 self.imHeight = im.GetHeight()
                 self.imWidth = im.GetWidth()
                 bm = im.ConvertToBitmap()
-                self.Canvas.AddScaledBitmap(bm, XY=(0, 0), Height= self.Canvas.GetSize().GetHeight(), Position='cc')
-                self.dotDiam = self.imHeight/100
+                self.Canvas.AddScaledBitmap(bm, XY=(0, 0), Height=self.Canvas.GetSize().GetHeight(), Position='cc')
+                self.dotDiam = self.imHeight / 100
         self.model.zero_face_parts()
         dl = self.model.not_none_draw_list(self.imageIndex)
         cl = self.model.not_none_coord_list(self.imageIndex)
@@ -772,7 +767,7 @@ class FaceMapperFrame(wx.Frame):
                 circ.Bind(FloatCanvas.EVT_FC_RIGHT_DOWN, self.circle_resize)
                 circ.Bind(FloatCanvas.EVT_FC_ENTER_OBJECT, self.circle_hover)
                 circ.Bind(FloatCanvas.EVT_FC_LEAVE_OBJECT, self.selection_reset)
-                circ.Bind(FloatCanvas.EVT_FC_LEFT_DCLICK, self.model.mark_guess)
+                circ.Bind(FloatCanvas.EVT_FC_LEFT_DCLICK, self.mark_guess)
                 coord_circle[self.model.coord_keys.index('drawn')] = 1
 
         self.make_face_label_list()
@@ -788,7 +783,8 @@ class FaceMapperFrame(wx.Frame):
     # Triggers when clicking inside of a circle
     def circle_left_down(self, circle):
         if wx.GetKeyState(wx.WXK_CONTROL):
-            self.select_part(self.model.coord_list(self.imageIndex)[self.model.draw_list(self.imageIndex).index(circle)][5])
+            self.select_part(
+                self.model.coord_list(self.imageIndex)[self.model.draw_list(self.imageIndex).index(circle)][5])
         else:
             self.draggingCircle = circle
             self.draggingCircleIndex = self.model.draw_list(self.imageIndex).index(self.draggingCircle)
@@ -803,14 +799,16 @@ class FaceMapperFrame(wx.Frame):
                 self.add_to_selections(self.model.draw_list(self.imageIndex)[circInd])
 
     # Triggers when right-clicking a circle
-    def circle_resize(self, circle):
+    def circle_resize(self, circle: FloatCanvas.Circle):
         self.pre_size_coords = circle.XY
         self.resizing_circle = circle
         self.resizing_circle_index = self.model.draw_list(self.imageIndex).index(self.resizing_circle)
         self.Canvas.Bind(FloatCanvas.EVT_MOTION, self.resize)
 
-        # Redraws circle at size based on dragging mouse
+    def mark_guess(self, object: FloatCanvas.Circle):
+        self.model.mark_guess(object, self.imageIndex)
 
+    # Redraws circle at size based on dragging mouse
     def resize(self, event):
         is_right_down = wx.GetMouseState().RightIsDown()
         curr_y_coord = event.Coords[1]
@@ -826,13 +824,14 @@ class FaceMapperFrame(wx.Frame):
         else:
             self.bind_all_mouse_events()
 
-    def gen_resize(self, circle, hit_circle, new_coord):
+    def gen_resize(self, circle: FloatCanvas.Circle, hit_circle: FloatCanvas.Circle, new_coord: np.ndarray):
         pre_size_coords = hit_circle.XY
         pre_circ_coords = circle.XY
         diff_coords = (new_coord - pre_size_coords[1]) * .1 + abs(circle.WH)
         diff = diff_coords[0] + diff_coords[1]
         if diff > 0:
-            self.model.coord_list(self.imageIndex)[self.model.draw_list(self.imageIndex).index(hit_circle)][self.model.coord_keys.index('diameter')] = diff
+            self.model.coord_list(self.imageIndex)[self.model.draw_list(self.imageIndex).index(hit_circle)][
+                self.model.coord_keys.index('diameter')] = diff
             circle.SetDiameter(diff)
 
             # Redraws circle at location of mouse while dragging
@@ -859,7 +858,8 @@ class FaceMapperFrame(wx.Frame):
                 self.bind_all_mouse_events()
 
             self.Canvas.Draw()
-# Triggers when hovering over circle
+            # Triggers when hovering over circle
+
     def circle_hover(self, circle):
         if not self.are_selecting_multiple:
             self.selectionText.SetLabel('Hovering Over ' + str(self.model.make_face_label(circle, self.imageIndex)))
@@ -870,7 +870,8 @@ class FaceMapperFrame(wx.Frame):
 
     def on_cmd_scroll(self, event):
         if self.pressedKeys[wx.WXK_CONTROL]:
-            coord_circ = self.model.coord_list(self.imageIndex)[self.model.draw_list(self.imageIndex).index(self.scrollingCircle)]
+            coord_circ = self.model.coord_list(self.imageIndex)[
+                self.model.draw_list(self.imageIndex).index(self.scrollingCircle)]
             colorList = wx.lib.colourdb.getColourList()
             part = list(self.model.face_part_list)[int(coord_circ[self.model.coord_keys.index('face_part')])]
             curr_color = self.model.curr_face_part_vals(part)[2]
@@ -880,10 +881,11 @@ class FaceMapperFrame(wx.Frame):
             else:
                 delta = -.05
             new_color = colorsys.hsv_to_rgb(hsv_color[0] + delta, hsv_color[1], hsv_color[2])
-            self.model.color_db.AddColour(part, wx.Colour(new_color[0], new_color[1], new_color[2], alpha=wx.ALPHA_OPAQUE))
-            self.model.curr_face_part_vals(part)[2] = wx.Colour(new_color[0], new_color[1], new_color[2], alpha=wx.ALPHA_OPAQUE)
+            self.model.color_db.AddColour(part,
+                                          wx.Colour(new_color[0], new_color[1], new_color[2], alpha=wx.ALPHA_OPAQUE))
+            self.model.curr_face_part_vals(part)[2] = wx.Colour(new_color[0], new_color[1], new_color[2],
+                                                                alpha=wx.ALPHA_OPAQUE)
             self.display_image(zoom=False)
-
 
     # Resets selection text
     def selection_reset(self, object):

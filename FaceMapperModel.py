@@ -110,10 +110,11 @@ class FaceMapperModel:
         return self.faceParts[facePart][1]
 
     def mirror_im(self, index):
-        if index - 1 in self.frame_dict:
-            self.frame_dict[index] = self.frame_dict[index - 1]
-        else:
-            self.frame_dict[index] = [[None] * 68, [None] * 68]
+        if index not in self.frame_dict:
+            if index - 1 in self.frame_dict:
+                self.frame_dict[index] = self.frame_dict[index - 1]
+            else:
+                self.frame_dict[index] = [[None] * 68, [None] * 68]
 
     def remove_occluded(self, index):
         for point in self.frame_dict[index][2]:
