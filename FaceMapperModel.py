@@ -34,7 +34,6 @@ class FaceMapperModel:
         for index, facePart in enumerate(self.faceParts):
             self.color_db.AddColour(facePart, wx.TheColourDatabase.Find(default_colors[index]))
 
-
         self.reset_default_face_parts()
 
         self.totalDotNum = 0
@@ -64,7 +63,7 @@ class FaceMapperModel:
             for index in range(self.faceParts[facePart][0]):
                 self.default_face_nums.append(abbr + str(index + 1))
 
-
+        self.add_index = 0
 
     def draw_list(self, index):
         if index in self.frame_dict:
@@ -76,10 +75,11 @@ class FaceMapperModel:
         return [x for x in self.draw_list(index) if x]
 
     def index_first_none(self, index):
-        try:
-            return max([self.draw_list(index).index(x) for x in [a for a in self.draw_list(index) if a]]) + 1
-        except ValueError as e:
-            return 0
+        return self.index_first_none(index)
+        # try:
+        #     return max([self.draw_list(index).index(x) for x in [a for a in self.draw_list(index) if a]]) + 1
+        # except ValueError as e:
+        #     return 0
 
     def coord_list(self, index):
         if index in self.frame_dict:
@@ -127,7 +127,8 @@ class FaceMapperModel:
         dl = self.coord_list(index)
         for circ_ind, circle in enumerate(dl):
             if circle:
-                face_part = self.curr_face_part_vals(self.face_part_list[int(circle[self.coord_keys.index('guess')])])
+                face_part = self.curr_face_part_vals(
+                    self.face_part_list[int(circle[self.coord_keys.index('face_part')])])
                 face_part[0] += 1
                 draw_circle = self.draw_list(index)[circ_ind]
                 self.set_color(draw_circle, face_part[2].GetAsString())
@@ -140,8 +141,9 @@ class FaceMapperModel:
         self.faceLabels = []
         part_index = 1
         for facePart in self.face_part_list:
-            self.faceLabels.append("{0}. {1}: {2} out of {3}".format(part_index, facePart, self.faceParts[facePart][1][0],
-                                                                     self.faceParts[facePart][1][1]))
+            self.faceLabels.append(
+                "{0}. {1}: {2} out of {3}".format(part_index, facePart, self.faceParts[facePart][1][0],
+                                                  self.faceParts[facePart][1][1]))
             part_index += 1
 
     @staticmethod
@@ -150,7 +152,7 @@ class FaceMapperModel:
         circle.SetFillColor(color)
 
     def next_part(self, index: int):
-        ind = len(self.draw_list(index)) - 1
+        ind = self.index_first_none(index) - 1
         part_index = self.coord_list(index)[ind][self.coord_keys.index('guess')]
         currPart = self.face_part_list[int(part_index)]
         difference = self.get_default_face_part_val(facePart=currPart) - self.curr_face_part_vals(currPart)[0]
@@ -164,23 +166,31 @@ class FaceMapperModel:
     def make_face_label(self, circle: FloatCanvas.Circle, index: int):
         return str(self.faceNums[self.draw_list(index).index(circle)])
 
-
-    def add_point(self, imageIndex, index: int, point: numpy.ndarray):
+    def add_point(self, imageIndex : int, index: int, point: numpy.ndarray):
         self.coord_list(imageIndex)[index] = [0] * len(self.coord_keys)
-        self.coord_list(imageIndex)[index][self.coord_keys.index('x')] = point[0]
-        self.coord_list(imageIndex)[index][self.coord_keys.index('y')] = point[1]
-        self.coord_list(imageIndex)[index][self.coord_keys.index('diameter')] = 5
         coord_circle = self.coord_list(imageIndex)[index]
+        coord_circle[self.coord_keys.index('x')] = point[0]
+        coord_circle[self.coord_keys.index('y')] = point[1]
+        coord_circle[self.coord_keys.index('diameter')] = 5
+        coord_circle[self.coord_keys.index('face_part')] = self.get_part_index(index)
         self.draw_list(imageIndex)[index] = FloatCanvas.Circle(XY=coord_circle[0:2], Diameter=coord_circle[3],
                                                                LineWidth=.7, LineColor='Red', FillColor='Red',
                                                                FillStyle='Transparent', InForeground=True)
+        self.add_index = index + 1
+
+    def get_part_index(self, index):
+        for partIndex, part in enumerate(self.face_part_list):
+            if index >= self.curr_face_part_vals(part)[1]:
+                index -= self.curr_face_part_vals(part)[1]
+            else:
+                return partIndex
 
     def delete_circle(self, imageIndex, circle: FloatCanvas.Circle):
         index = self.draw_list(imageIndex).index(circle)
         self.draw_list(imageIndex)[index] = None
         self.coord_list(imageIndex)[index] = None
 
-    def set_coords(self, circle:FloatCanvas.Circle, x_y: numpy.ndarray, im_ind:int):
+    def set_coords(self, circle: FloatCanvas.Circle, x_y: numpy.ndarray, im_ind: int):
         index = self.draw_list(im_ind).index(circle)
         self.draw_list(im_ind)[index].XY = x_y
         self.coord_list(im_ind)[index][0:2] = x_y

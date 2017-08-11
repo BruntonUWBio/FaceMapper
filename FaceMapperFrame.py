@@ -727,9 +727,9 @@ class FaceMapperFrame(wx.Frame):
     # TODO: Fix
     def part_dict(self):
         return {k: v for k, v in {
-            index: [circle for circle in self.model.coord_list(self.imageIndex) if
-                    (circle[self.model.coord_keys.index('guess')] == index and circle)]
-            for index in range(len(self.model.faceParts.keys()))}.items() if len(v) > 1}
+            index: [circle for circle in self.model.coord_list(self.imageIndex) if circle and
+                    (circle[self.model.coord_keys.index('face_part')] == index)]
+            for index in range(len(self.model.face_part_list))}.items() if len(v) > 1}
 
     @staticmethod
     def find_bb_half(bbox):
