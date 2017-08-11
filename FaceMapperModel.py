@@ -63,8 +63,6 @@ class FaceMapperModel:
             for index in range(self.faceParts[facePart][0]):
                 self.default_face_nums.append(abbr + str(index + 1))
 
-        self.add_index = 0
-
     def draw_list(self, index):
         if index in self.frame_dict:
             return self.frame_dict[index][0]
@@ -75,11 +73,10 @@ class FaceMapperModel:
         return [x for x in self.draw_list(index) if x]
 
     def index_first_none(self, index):
-        return self.index_first_none(index)
-        # try:
-        #     return max([self.draw_list(index).index(x) for x in [a for a in self.draw_list(index) if a]]) + 1
-        # except ValueError as e:
-        #     return 0
+        try:
+             return max([self.draw_list(index).index(x) for x in [a for a in self.draw_list(index) if a]]) + 1
+        except ValueError as e:
+            return 0
 
     def coord_list(self, index):
         if index in self.frame_dict:
@@ -153,14 +150,15 @@ class FaceMapperModel:
 
     def next_part(self, index: int):
         ind = self.index_first_none(index) - 1
-        part_index = self.coord_list(index)[ind][self.coord_keys.index('guess')]
-        currPart = self.face_part_list[int(part_index)]
-        difference = self.get_default_face_part_val(facePart=currPart) - self.curr_face_part_vals(currPart)[0]
-        self.curr_face_part_vals(currPart)[1] = self.curr_face_part_vals(currPart)[0]
-        for i in range(difference):
-            self.draw_list(index).append(None)
-            self.coord_list(index).append(None)
-        self.make_face_labels()
+        if ind > -1:
+            part_index = self.coord_list(index)[ind][self.coord_keys.index('face_part')]
+            currPart = self.face_part_list[int(part_index)]
+            difference = self.get_default_face_part_val(facePart=currPart) - self.curr_face_part_vals(currPart)[0]
+            self.curr_face_part_vals(currPart)[1] = self.curr_face_part_vals(currPart)[0]
+            for i in range(difference):
+                self.draw_list(index).append(None)
+                self.coord_list(index).append(None)
+            self.make_face_labels()
 
     # Returns face number for a given circle
     def make_face_label(self, circle: FloatCanvas.Circle, index: int):
