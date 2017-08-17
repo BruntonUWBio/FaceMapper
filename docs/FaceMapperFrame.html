@@ -41,6 +41,76 @@
             
   <div class="section" id="module-FaceMapperFrame">
 <span id="facemapperframe"></span><h1>FaceMapperFrame<a class="headerlink" href="#module-FaceMapperFrame" title="Permalink to this headline">¶</a></h1>
+<dl class="class">
+<dt id="FaceMapperFrame.FaceMapperFrame">
+<em class="property">class </em><code class="descclassname">FaceMapperFrame.</code><code class="descname">FaceMapperFrame</code><span class="sig-paren">(</span><em>parent</em>, <em>id</em>, <em>name</em>, <em>image_dir</em>, <em>n_points=None</em>, <em>scale=1.0</em>, <em>is_video=False</em>, <em>csv_path=None</em><span class="sig-paren">)</span><a class="reference internal" href="_modules/FaceMapperFrame.html#FaceMapperFrame"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#FaceMapperFrame.FaceMapperFrame" title="Permalink to this definition">¶</a></dt>
+<dd><p>Main annotator class.</p>
+<dl class="method">
+<dt id="FaceMapperFrame.FaceMapperFrame.add_coords">
+<code class="descname">add_coords</code><span class="sig-paren">(</span><em>coords: numpy.ndarray</em><span class="sig-paren">)</span> &#x2192; None<a class="reference internal" href="_modules/FaceMapperFrame.html#FaceMapperFrame.add_coords"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#FaceMapperFrame.FaceMapperFrame.add_coords" title="Permalink to this definition">¶</a></dt>
+<dd><p>Add a new point with the given coordinates</p>
+<table class="docutils field-list" frame="void" rules="none">
+<col class="field-name" />
+<col class="field-body" />
+<tbody valign="top">
+<tr class="field-odd field"><th class="field-name">Parameters:</th><td class="field-body"><strong>coords</strong> (<em>np.ndarray</em>) – Coordinates to add</td>
+</tr>
+</tbody>
+</table>
+</dd></dl>
+
+<dl class="method">
+<dt id="FaceMapperFrame.FaceMapperFrame.bind_all_mouse_events">
+<code class="descname">bind_all_mouse_events</code><span class="sig-paren">(</span><span class="sig-paren">)</span><a class="reference internal" href="_modules/FaceMapperFrame.html#FaceMapperFrame.bind_all_mouse_events"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#FaceMapperFrame.FaceMapperFrame.bind_all_mouse_events" title="Permalink to this definition">¶</a></dt>
+<dd><p>Resets mouse events, only tracks left down, right down, and multiple select.</p>
+</dd></dl>
+
+<dl class="method">
+<dt id="FaceMapperFrame.FaceMapperFrame.on_left_down">
+<code class="descname">on_left_down</code><span class="sig-paren">(</span><em>event: wx.lib.floatcanvas.FloatCanvas._MouseEvent</em><span class="sig-paren">)</span> &#x2192; None<a class="reference internal" href="_modules/FaceMapperFrame.html#FaceMapperFrame.on_left_down"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#FaceMapperFrame.FaceMapperFrame.on_left_down" title="Permalink to this definition">¶</a></dt>
+<dd><p>Event handler for left mouse click, adds dot to canvas at clicked location.
+:param event: Left click mouse event</p>
+</dd></dl>
+
+<dl class="method">
+<dt id="FaceMapperFrame.FaceMapperFrame.on_right_click">
+<code class="descname">on_right_click</code><span class="sig-paren">(</span><em>event: wx.lib.floatcanvas.FloatCanvas._MouseEvent</em><span class="sig-paren">)</span> &#x2192; None<a class="reference internal" href="_modules/FaceMapperFrame.html#FaceMapperFrame.on_right_click"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#FaceMapperFrame.FaceMapperFrame.on_right_click" title="Permalink to this definition">¶</a></dt>
+<dd><p>Event handler for right clicking, prepares for rotation.</p>
+<table class="docutils field-list" frame="void" rules="none">
+<col class="field-name" />
+<col class="field-body" />
+<tbody valign="top">
+<tr class="field-odd field"><th class="field-name">Parameters:</th><td class="field-body"><strong>event</strong> – Right click mouse event</td>
+</tr>
+</tbody>
+</table>
+</dd></dl>
+
+<dl class="method">
+<dt id="FaceMapperFrame.FaceMapperFrame.open_csv_file">
+<code class="descname">open_csv_file</code><span class="sig-paren">(</span><em>path</em><span class="sig-paren">)</span><a class="reference internal" href="_modules/FaceMapperFrame.html#FaceMapperFrame.open_csv_file"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#FaceMapperFrame.FaceMapperFrame.open_csv_file" title="Permalink to this definition">¶</a></dt>
+<dd><p>Sets coordinates based on csv.</p>
+<table class="docutils field-list" frame="void" rules="none">
+<col class="field-name" />
+<col class="field-body" />
+<tbody valign="top">
+<tr class="field-odd field"><th class="field-name">Parameters:</th><td class="field-body"><strong>path</strong> – Path to csv.</td>
+</tr>
+<tr class="field-even field"><th class="field-name">Returns:</th><td class="field-body">None</td>
+</tr>
+</tbody>
+</table>
+</dd></dl>
+
+<dl class="method">
+<dt id="FaceMapperFrame.FaceMapperFrame.rotate">
+<code class="descname">rotate</code><span class="sig-paren">(</span><em>event: wx.lib.floatcanvas.FloatCanvas._MouseEvent</em><span class="sig-paren">)</span> &#x2192; None<a class="reference internal" href="_modules/FaceMapperFrame.html#FaceMapperFrame.rotate"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#FaceMapperFrame.FaceMapperFrame.rotate" title="Permalink to this definition">¶</a></dt>
+<dd><p>Rotates dots.
+:param event: Right click mouse event</p>
+</dd></dl>
+
+</dd></dl>
+
 <dl class="function">
 <dt id="FaceMapperFrame.distance">
 <code class="descclassname">FaceMapperFrame.</code><code class="descname">distance</code><span class="sig-paren">(</span><em>p1</em>, <em>p2</em><span class="sig-paren">)</span><a class="reference internal" href="_modules/FaceMapperFrame.html#distance"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#FaceMapperFrame.distance" title="Permalink to this definition">¶</a></dt>

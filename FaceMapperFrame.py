@@ -26,6 +26,9 @@ IMAGE_FORMATS = [".jpg", ".png", ".ppm", ".pgm", ".gif", ".tif", ".tiff", ".jpe"
 
 
 class FaceMapperFrame(wx.Frame):
+    """
+    Main annotator class.
+    """
     def __init__(self, parent, id, name, image_dir, n_points=None, scale=1.0, is_video=False, csv_path=None):
         """
         Default constructor.
