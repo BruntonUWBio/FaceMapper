@@ -1,3 +1,9 @@
+"""
+.. module FaceMapperFrame
+    :synopsis: Annotation tool for labeling facial features for neural network training.
+"""
+
+
 import colorsys
 import csv
 import glob
@@ -266,8 +272,10 @@ class FaceMapperFrame(wx.Frame):
         if csv_path:
             self.open_csv_file(csv_path)
 
-    # Resets mouse events, only tracks left down, right down, and multiple select
     def bind_all_mouse_events(self):
+        """
+        Resets mouse events, only tracks left down, right down, and multiple select.
+        """
         self.Canvas.Unbind(FloatCanvas.EVT_MOUSEWHEEL)
         self.Canvas.Unbind(FloatCanvas.EVT_LEFT_UP)
         self.Canvas.Bind(FloatCanvas.EVT_MOTION, self.multi_select)
@@ -277,20 +285,34 @@ class FaceMapperFrame(wx.Frame):
 
         # Triggers on left mouse click
 
-    def on_left_down(self, event):
+    def on_left_down(self, event: FloatCanvas._MouseEvent) -> None:
+        """
+        Event handler for left mouse click, adds dot to canvas at clicked location.
+        :param event: Left click mouse event
+        """
         if not self.pressedKeys[wx.WXK_CONTROL]:
-            self.add_coords(event.Coords)
+            self.add_coords(event.GetCoords())
 
-    # Adds location of event to coordinate matrix
-    def add_coords(self, coords: np.ndarray):
+    def add_coords(self, coords: np.ndarray) -> None:
+        """
+        Add a new point with the given coordinates
+
+        :param coords: Coordinates to add
+        :type coords: np.ndarray
+        """
         length = self.model.index_first_none(self.imageIndex)
         if length < self.totalDotNum:
             self.model.add_point(self.imageIndex, length, coords)
             self.display_image(zoom=False)
 
-    def on_right_click(self, event):
+    def on_right_click(self, event: FloatCanvas._MouseEvent) -> None:
+        """
+        Event handler for right clicking, prepares for rotation.
+
+        :param event: Right click mouse event
+        """
         if wx.GetKeyState(wx.WXK_CONTROL):
-            self.pre_rotate_mouse_coords = event.Coords
+            self.pre_rotate_mouse_coords = event.GetCoords()
             self.pre_rotate_coords = []
             for circle in self.selections:
                 self.half = self.find_bb_half(self.faceBB)
@@ -302,11 +324,15 @@ class FaceMapperFrame(wx.Frame):
             if not self.are_selecting_multiple:
                 self.clear_all_selections()
 
-    def rotate(self, event):
+    def rotate(self, event: FloatCanvas._MouseEvent) -> None:
+        """
+        Rotates dots.
+        :param event: Right click mouse event
+        """
         is_right_down = wx.GetMouseState().RightIsDown()
         if is_right_down:
             for index, circle in enumerate(self.selections):
-                diff_coords = event.Coords - self.pre_rotate_mouse_coords
+                diff_coords = event.GetCoords() - self.pre_rotate_mouse_coords
                 diff_coord_x = diff_coords[0] / 100
                 diff_coord_y = diff_coords[1] / 100
                 coord_matrix = np.array(
@@ -320,7 +346,7 @@ class FaceMapperFrame(wx.Frame):
         else:
             self.bind_all_mouse_events()
 
-    def set_coords(self, circle, x_y, im_ind=None):
+    def set_coords(self, circle: FloatCanvas.Circle, x_y: np.ndarray, im_ind: int = None) -> None:
         if im_ind is None:
             im_ind = self.imageIndex
         self.model.set_coords(circle, x_y, im_ind)

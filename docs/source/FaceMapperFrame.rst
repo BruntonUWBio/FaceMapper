@@ -1,5 +1,5 @@
 FaceMapperFrame
 ***************
 
-.. automodule:: gui.FaceMapperFrame
+.. automodule:: FaceMapperFrame
     :members:
