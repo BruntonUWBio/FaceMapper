@@ -301,7 +301,6 @@ class FaceMapperFrame(wx.Frame):
         Add a new point with the given coordinates
 
         :param coords: Coordinates to add
-        :type coords: np.ndarray
         """
         length = self.model.index_first_none(self.imageIndex)
         if length < self.totalDotNum:
@@ -330,6 +329,7 @@ class FaceMapperFrame(wx.Frame):
     def rotate(self, event: FloatCanvas._MouseEvent) -> None:
         """
         Rotates dots.
+
         :param event: Right click mouse event
         """
         is_right_down = wx.GetMouseState().RightIsDown()
@@ -350,6 +350,13 @@ class FaceMapperFrame(wx.Frame):
             self.bind_all_mouse_events()
 
     def set_coords(self, circle: FloatCanvas.Circle, x_y: np.ndarray, im_ind: int = None) -> None:
+        """
+        Sets the given circle to have the coordinates specified by x_y.
+
+        :param circle: Circle to change coordinates of.
+        :param x_y: [x, y] coordinates to change to.
+        :param im_ind: Index of image.
+        """
         if im_ind is None:
             im_ind = self.imageIndex
         self.model.set_coords(circle, x_y, im_ind)
@@ -360,15 +367,23 @@ class FaceMapperFrame(wx.Frame):
         self.display_image()
 
     # Triggers on event selection
-    def on_select(self, event):
+    def on_select(self, event: wx.EVT_LISTBOX) -> None:
+        """
+        Event handler for when an image is selected. Displays the selected image.
+
+        :param event: Selection event.
+        """
         self.image_name = event.GetString()
         self.select_im(index=self.image_names.index(self.image_name))
 
-    def select_im(self, index):
+    def select_im(self, index: int) -> None:
+        """
+        Selects the image at the given index.
+
+        :param index: Index for selection.
+        """
         self.update_index(index)
         self.mirror_im(event=None, should_save=False, check_ssim_if_smart=False)
-        # else:
-        #    self.display_image(zoom=True)
 
     def update_index(self, index):
         self.imageIndex = index

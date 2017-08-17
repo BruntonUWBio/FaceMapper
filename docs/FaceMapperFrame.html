@@ -53,7 +53,7 @@
 <col class="field-name" />
 <col class="field-body" />
 <tbody valign="top">
-<tr class="field-odd field"><th class="field-name">Parameters:</th><td class="field-body"><strong>coords</strong> (<em>np.ndarray</em>) – Coordinates to add</td>
+<tr class="field-odd field"><th class="field-name">Parameters:</th><td class="field-body"><strong>coords</strong> – Coordinates to add</td>
 </tr>
 </tbody>
 </table>
@@ -87,6 +87,20 @@
 </dd></dl>
 
 <dl class="method">
+<dt id="FaceMapperFrame.FaceMapperFrame.on_select">
+<code class="descname">on_select</code><span class="sig-paren">(</span><em>event: &lt;wx.core.PyEventBinder object at 0x7f55828cd208&gt;</em><span class="sig-paren">)</span> &#x2192; None<a class="reference internal" href="_modules/FaceMapperFrame.html#FaceMapperFrame.on_select"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#FaceMapperFrame.FaceMapperFrame.on_select" title="Permalink to this definition">¶</a></dt>
+<dd><p>Event handler for when an image is selected. Displays the selected image.</p>
+<table class="docutils field-list" frame="void" rules="none">
+<col class="field-name" />
+<col class="field-body" />
+<tbody valign="top">
+<tr class="field-odd field"><th class="field-name">Parameters:</th><td class="field-body"><strong>event</strong> – Selection event.</td>
+</tr>
+</tbody>
+</table>
+</dd></dl>
+
+<dl class="method">
 <dt id="FaceMapperFrame.FaceMapperFrame.open_csv_file">
 <code class="descname">open_csv_file</code><span class="sig-paren">(</span><em>path</em><span class="sig-paren">)</span><a class="reference internal" href="_modules/FaceMapperFrame.html#FaceMapperFrame.open_csv_file"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#FaceMapperFrame.FaceMapperFrame.open_csv_file" title="Permalink to this definition">¶</a></dt>
 <dd><p>Sets coordinates based on csv.</p>
@@ -105,8 +119,48 @@
 <dl class="method">
 <dt id="FaceMapperFrame.FaceMapperFrame.rotate">
 <code class="descname">rotate</code><span class="sig-paren">(</span><em>event: wx.lib.floatcanvas.FloatCanvas._MouseEvent</em><span class="sig-paren">)</span> &#x2192; None<a class="reference internal" href="_modules/FaceMapperFrame.html#FaceMapperFrame.rotate"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#FaceMapperFrame.FaceMapperFrame.rotate" title="Permalink to this definition">¶</a></dt>
-<dd><p>Rotates dots.
-:param event: Right click mouse event</p>
+<dd><p>Rotates dots.</p>
+<table class="docutils field-list" frame="void" rules="none">
+<col class="field-name" />
+<col class="field-body" />
+<tbody valign="top">
+<tr class="field-odd field"><th class="field-name">Parameters:</th><td class="field-body"><strong>event</strong> – Right click mouse event</td>
+</tr>
+</tbody>
+</table>
+</dd></dl>
+
+<dl class="method">
+<dt id="FaceMapperFrame.FaceMapperFrame.select_im">
+<code class="descname">select_im</code><span class="sig-paren">(</span><em>index: int</em><span class="sig-paren">)</span> &#x2192; None<a class="reference internal" href="_modules/FaceMapperFrame.html#FaceMapperFrame.select_im"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#FaceMapperFrame.FaceMapperFrame.select_im" title="Permalink to this definition">¶</a></dt>
+<dd><p>Selects the image at the given index.</p>
+<table class="docutils field-list" frame="void" rules="none">
+<col class="field-name" />
+<col class="field-body" />
+<tbody valign="top">
+<tr class="field-odd field"><th class="field-name">Parameters:</th><td class="field-body"><strong>index</strong> – Index for selection.</td>
+</tr>
+</tbody>
+</table>
+</dd></dl>
+
+<dl class="method">
+<dt id="FaceMapperFrame.FaceMapperFrame.set_coords">
+<code class="descname">set_coords</code><span class="sig-paren">(</span><em>circle: wx.lib.floatcanvas.FCObjects.Circle</em>, <em>x_y: numpy.ndarray</em>, <em>im_ind: int = None</em><span class="sig-paren">)</span> &#x2192; None<a class="reference internal" href="_modules/FaceMapperFrame.html#FaceMapperFrame.set_coords"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#FaceMapperFrame.FaceMapperFrame.set_coords" title="Permalink to this definition">¶</a></dt>
+<dd><p>Sets the given circle to have the coordinates specified by x_y.</p>
+<table class="docutils field-list" frame="void" rules="none">
+<col class="field-name" />
+<col class="field-body" />
+<tbody valign="top">
+<tr class="field-odd field"><th class="field-name">Parameters:</th><td class="field-body"><ul class="first last simple">
+<li><strong>circle</strong> – Circle to change coordinates of.</li>
+<li><strong>x_y</strong> – [x, y] coordinates to change to.</li>
+<li><strong>im_ind</strong> – Index of image.</li>
+</ul>
+</td>
+</tr>
+</tbody>
+</table>
 </dd></dl>
 
 </dd></dl>
