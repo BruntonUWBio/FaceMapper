@@ -3,7 +3,6 @@
     :synopsis: Annotation tool for labeling facial features for neural network training.
 """
 
-
 import colorsys
 import csv
 import glob
@@ -29,6 +28,7 @@ class FaceMapperFrame(wx.Frame):
     """
     Main annotator class.
     """
+
     def __init__(self, parent, id, name, image_dir, n_points=None, scale=1.0, is_video=False, csv_path=None):
         """
         Default constructor.
@@ -488,15 +488,10 @@ class FaceMapperFrame(wx.Frame):
                 self.Canvas.RemoveObject(self.select_rectangle, ResetBB=False)
                 self.select_rectangle = None
             self.select_rectangle = \
-                self.Canvas.AddObject(FloatCanvas.Rectangle(
-                    XY=self.rectangleStart,
-                    WH=event.Coords - self.rectangleStart,
-                    LineColor='Purple',
-                    LineStyle='Dot',
-                    LineWidth=1,
-                    FillColor='Gold',
-                    FillStyle='BiDiagonalHatch'
-                ))
+                self.Canvas.AddObject(FloatCanvas.Rectangle(XY=self.rectangleStart,
+                                                            WH=event.Coords - self.rectangleStart, LineColor='Purple',
+                                                            LineStyle='Dot', FillColor='Gold',
+                                                            FillStyle='BiDiagonalHatch'))
             self.Canvas.Draw()
             self.Canvas.Bind(FloatCanvas.EVT_LEFT_UP, self.fin_select)
 
@@ -625,7 +620,6 @@ class FaceMapperFrame(wx.Frame):
                 filename = row[0]
                 if filename in self.image_names:
                     file_names.append(filename)
-                    file_index = self.image_names.index(filename)
                     points = []
                     self.emotion_dict[filename] = row[1].split(',')
                     for i in range(2, len(row), 3):
